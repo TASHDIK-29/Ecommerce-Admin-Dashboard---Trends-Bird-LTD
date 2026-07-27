@@ -1,0 +1,14 @@
+// Trends Bird — Ecommerce Admin Dashboard
+//
+// The schema grows one module at a time, in the build order from Section 3 of
+// the assignment. Each module's models are added under their own heading and
+// shipped with their own migration.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
