@@ -142,7 +142,8 @@ model Media {
   uploadedById String?
   uploadedBy   User?     @relation("MediaUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
 
-  avatarOf User[] @relation("UserAvatar")
+  avatarOf        User[]     @relation("UserAvatar")
+  categoryImages  Category[] @relation("CategoryImage")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -151,4 +152,26 @@ model Media {
   @@index([uploadedById])
   @@index([createdAt])
   @@map("media")
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  description String?
+  imageId     String?
+  image       Media?     @relation("CategoryImage", fields: [imageId], references: [id], onDelete: SetNull)
+  parentId    String?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Category[] @relation("CategoryTree")
+  isActive    Boolean    @default(true)
+  sortOrder   Int        @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([isActive])
+  @@index([sortOrder])
+  @@map("categories")
 }
