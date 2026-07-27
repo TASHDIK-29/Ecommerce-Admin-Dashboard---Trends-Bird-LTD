@@ -6,6 +6,7 @@ import { BrandRoutes } from "../modules/brand/brand.route";
 import { CategoryRoutes } from "../modules/category/category.route";
 import { MediaRoutes } from "../modules/media/media.route";
 import { PermissionRoutes } from "../modules/permission/permission.route";
+import { ProductRoutes } from "../modules/product/product.route";
 import { RoleRoutes } from "../modules/role/role.route";
 import { UserRoutes } from "../modules/user/user.route";
 
@@ -25,6 +26,7 @@ const moduleRoutes: ModuleRoute[] = [
   { path: "/categories", route: CategoryRoutes },
   { path: "/brands", route: BrandRoutes },
   { path: "/attributes", route: AttributeRoutes },
+  { path: "/products", route: ProductRoutes },
 ];
 
 moduleRoutes.forEach((moduleRoute) => {

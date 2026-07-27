@@ -149,13 +149,15 @@ const updateMedia = async (id: string, payload: IUpdateMediaPayload) => {
 };
 
 const countAttachments = async (id: string): Promise<number> => {
-  const [users, categories, brands] = await prisma.$transaction([
+  const [users, categories, brands, attributeValues, products] = await prisma.$transaction([
     prisma.user.count({ where: { avatarId: id } }),
     prisma.category.count({ where: { imageId: id } }),
     prisma.brand.count({ where: { logoId: id } }),
+    prisma.attributeValue.count({ where: { mediaId: id } }),
+    prisma.productMedia.count({ where: { mediaId: id } }),
   ]);
 
-  return users + categories + brands;
+  return users + categories + brands + attributeValues + products;
 };
 
 const deleteMedia = async (id: string, force: boolean) => {
@@ -183,6 +185,8 @@ const deleteMedia = async (id: string, force: boolean) => {
       await tx.user.updateMany({ where: { avatarId: id }, data: { avatarId: null } });
       await tx.category.updateMany({ where: { imageId: id }, data: { imageId: null } });
       await tx.brand.updateMany({ where: { logoId: id }, data: { logoId: null } });
+      await tx.attributeValue.updateMany({ where: { mediaId: id }, data: { mediaId: null } });
+      await tx.productMedia.deleteMany({ where: { mediaId: id } });
     }
     await tx.media.delete({ where: { id } });
   });

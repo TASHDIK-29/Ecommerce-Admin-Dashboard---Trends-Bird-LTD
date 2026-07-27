@@ -285,11 +285,31 @@ const updateAttribute = async (id: string, payload: IUpdateAttributePayload) => 
 const deleteAttribute = async (id: string) => {
   const attribute = await prisma.attribute.findUnique({
     where: { id },
-    select: { id: true, name: true, _count: { select: { values: true } } },
+    select: { id: true, name: true, _count: { select: { values: true, products: true } } },
   });
 
   if (!attribute) {
     throw new AppError(StatusCodes.NOT_FOUND, "Attribute not found.");
+  }
+
+  const variantsInUse = await prisma.productVariant.count({
+    where: { values: { some: { attributeValue: { attributeId: id } } } },
+  });
+
+  if (variantsInUse > 0) {
+    throw new AppError(
+      StatusCodes.CONFLICT,
+      `"${attribute.name}" is used by ${variantsInUse} product variant(s). Deleting it would corrupt them.`,
+      [{ path: "id", message: `${variantsInUse} variant(s) are built on this attribute.` }],
+    );
+  }
+
+  if (attribute._count.products > 0) {
+    throw new AppError(
+      StatusCodes.CONFLICT,
+      `"${attribute.name}" is assigned to ${attribute._count.products} product(s). Remove it from them first.`,
+      [{ path: "id", message: `${attribute._count.products} product(s) use this attribute.` }],
+    );
   }
 
   await prisma.attribute.delete({ where: { id } });
@@ -382,11 +402,19 @@ const updateValue = async (id: string, valueId: string, payload: IUpdateValuePay
 const deleteValue = async (id: string, valueId: string) => {
   const value = await prisma.attributeValue.findFirst({
     where: { id: valueId, attributeId: id },
-    select: { id: true, value: true },
+    select: { id: true, value: true, _count: { select: { variantValues: true } } },
   });
 
   if (!value) {
     throw new AppError(StatusCodes.NOT_FOUND, "Attribute value not found on this attribute.");
+  }
+
+  if (value._count.variantValues > 0) {
+    throw new AppError(
+      StatusCodes.CONFLICT,
+      `"${value.value}" is used by ${value._count.variantValues} product variant(s). Deleting it would corrupt them.`,
+      [{ path: "valueId", message: `${value._count.variantValues} variant(s) use this value.` }],
+    );
   }
 
   await prisma.attributeValue.delete({ where: { id: valueId } });

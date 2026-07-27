@@ -125,11 +125,19 @@ const updateBrand = async (id: string, payload: IUpdateBrandPayload) => {
 const deleteBrand = async (id: string) => {
   const brand = await prisma.brand.findUnique({
     where: { id },
-    select: { id: true, name: true },
+    select: { id: true, name: true, _count: { select: { products: true } } },
   });
 
   if (!brand) {
     throw new AppError(StatusCodes.NOT_FOUND, "Brand not found.");
+  }
+
+  if (brand._count.products > 0) {
+    throw new AppError(
+      StatusCodes.CONFLICT,
+      `"${brand.name}" cannot be deleted while ${brand._count.products} product(s) reference it. Reassign or delete them first.`,
+      [{ path: "id", message: `${brand._count.products} product(s) reference this brand.` }],
+    );
   }
 
   await prisma.brand.delete({ where: { id } });

@@ -146,6 +146,7 @@ model Media {
   categoryImages  Category[] @relation("CategoryImage")
   brandLogos      Brand[]          @relation("BrandLogo")
   attributeValues AttributeValue[] @relation("AttributeValueMedia")
+  productMedia    ProductMedia[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -168,6 +169,7 @@ model Category {
   children    Category[] @relation("CategoryTree")
   isActive    Boolean    @default(true)
   sortOrder   Int        @default(0)
+  products    ProductCategory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -191,6 +193,7 @@ model Brand {
   logoId      String?
   logo        Media?      @relation("BrandLogo", fields: [logoId], references: [id], onDelete: SetNull)
   status      BrandStatus @default(ACTIVE)
+  products    Product[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -211,8 +214,9 @@ model Attribute {
   id     String           @id @default(uuid())
   name   String           @unique
   slug   String           @unique
-  type   AttributeType    @default(DROPDOWN)
+  type   AttributeType      @default(DROPDOWN)
   values AttributeValue[]
+  products ProductAttribute[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -232,6 +236,9 @@ model AttributeValue {
   media       Media?    @relation("AttributeValueMedia", fields: [mediaId], references: [id], onDelete: SetNull)
   sortOrder   Int       @default(0)
 
+  variantValues VariantAttributeValue[]
+  productMedia  ProductMedia[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -239,4 +246,136 @@ model AttributeValue {
   @@unique([attributeId, slug])
   @@index([attributeId])
   @@map("attribute_values")
+}
+
+enum StockStatus {
+  IN_STOCK
+  OUT_OF_STOCK
+  LOW_STOCK
+}
+
+model Product {
+  id               String  @id @default(uuid())
+  name             String
+  slug             String  @unique
+  sku              String  @unique
+  shortDescription String?
+  longDescription  String?
+
+  hasVariants Boolean @default(false)
+
+  price             Decimal?     @db.Decimal(12, 2)
+  salePrice         Decimal?     @db.Decimal(12, 2)
+  stock             Int?
+  stockStatus       StockStatus?
+  lowStockThreshold Int?
+
+  weight     Decimal? @db.Decimal(10, 3)
+  isActive   Boolean  @default(true)
+  isFeatured Boolean  @default(false)
+  sortOrder  Int      @default(0)
+
+  brandId String?
+  brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Restrict)
+
+  categories ProductCategory[]
+  attributes ProductAttribute[]
+  variants   ProductVariant[]
+  media      ProductMedia[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brandId])
+  @@index([isActive])
+  @@index([isFeatured])
+  @@index([hasVariants])
+  @@index([sortOrder])
+  @@map("products")
+}
+
+model ProductCategory {
+  productId  String
+  categoryId String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@id([productId, categoryId])
+  @@index([categoryId])
+  @@map("product_categories")
+}
+
+model ProductAttribute {
+  productId   String
+  attributeId String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Restrict)
+
+  @@id([productId, attributeId])
+  @@index([attributeId])
+  @@map("product_attributes")
+}
+
+model ProductVariant {
+  id        String @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  sku            String @unique
+  combinationKey String
+
+  price             Decimal     @db.Decimal(12, 2)
+  salePrice         Decimal?    @db.Decimal(12, 2)
+  stock             Int         @default(0)
+  stockStatus       StockStatus @default(IN_STOCK)
+  lowStockThreshold Int?
+  weight            Decimal?    @db.Decimal(10, 3)
+  isActive          Boolean     @default(true)
+
+  values VariantAttributeValue[]
+  media  ProductMedia[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, combinationKey])
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model VariantAttributeValue {
+  variantId        String
+  attributeValueId String
+  variant          ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attributeValue   AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Restrict)
+
+  @@id([variantId, attributeValueId])
+  @@index([attributeValueId])
+  @@map("variant_attribute_values")
+}
+
+model ProductMedia {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mediaId   String
+  media     Media   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  variantId        String?
+  variant          ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attributeValueId String?
+  attributeValue   AttributeValue? @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  isThumbnail Boolean @default(false)
+  isGallery   Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([mediaId])
+  @@index([variantId])
+  @@index([attributeValueId])
+  @@map("product_media")
 }
