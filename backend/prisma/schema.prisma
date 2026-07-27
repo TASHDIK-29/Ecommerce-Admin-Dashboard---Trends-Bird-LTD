@@ -144,6 +144,7 @@ model Media {
 
   avatarOf        User[]     @relation("UserAvatar")
   categoryImages  Category[] @relation("CategoryImage")
+  brandLogos      Brand[]    @relation("BrandLogo")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -174,4 +175,25 @@ model Category {
   @@index([isActive])
   @@index([sortOrder])
   @@map("categories")
+}
+
+enum BrandStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Brand {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  slug        String      @unique
+  description String?
+  logoId      String?
+  logo        Media?      @relation("BrandLogo", fields: [logoId], references: [id], onDelete: SetNull)
+  status      BrandStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("brands")
 }

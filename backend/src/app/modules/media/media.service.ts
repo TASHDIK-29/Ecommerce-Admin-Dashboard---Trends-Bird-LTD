@@ -148,8 +148,15 @@ const updateMedia = async (id: string, payload: IUpdateMediaPayload) => {
   });
 };
 
-const countAttachments = async (id: string): Promise<number> =>
-  prisma.user.count({ where: { avatarId: id } });
+const countAttachments = async (id: string): Promise<number> => {
+  const [users, categories, brands] = await prisma.$transaction([
+    prisma.user.count({ where: { avatarId: id } }),
+    prisma.category.count({ where: { imageId: id } }),
+    prisma.brand.count({ where: { logoId: id } }),
+  ]);
+
+  return users + categories + brands;
+};
 
 const deleteMedia = async (id: string, force: boolean) => {
   const media = await prisma.media.findUnique({
@@ -174,6 +181,8 @@ const deleteMedia = async (id: string, force: boolean) => {
   await prisma.$transaction(async (tx) => {
     if (attachments > 0) {
       await tx.user.updateMany({ where: { avatarId: id }, data: { avatarId: null } });
+      await tx.category.updateMany({ where: { imageId: id }, data: { imageId: null } });
+      await tx.brand.updateMany({ where: { logoId: id }, data: { logoId: null } });
     }
     await tx.media.delete({ where: { id } });
   });
