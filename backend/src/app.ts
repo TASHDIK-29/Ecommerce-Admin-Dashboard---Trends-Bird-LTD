@@ -5,6 +5,8 @@ import helmet from "helmet";
 import { StatusCodes } from "http-status-codes";
 
 import { envVars } from "./app/config/env";
+import { authGuard } from "./app/middlewares/authGuard";
+import { csrfGuard } from "./app/middlewares/csrfGuard";
 import { globalErrorHandler } from "./app/middlewares/globalErrorHandler";
 import { notFound } from "./app/middlewares/notFound";
 import { router } from "./app/routes";
@@ -30,7 +32,20 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use("/api/v1", router);
+/**
+ * Authentication is applied to the WHOLE API tree, not route by route.
+ *
+ * Section 4.2 requires that a new route is protected without anyone
+ * remembering to protect it. Mounting the guard here inverts the default:
+ * everything is closed, and opening a route means adding it to the explicit
+ * allowlist in authGuard.ts. Forgetting to guard a route is no longer possible
+ * — the failure mode is a route that is too strict, which is visible
+ * immediately, rather than one that is wide open, which is not.
+ *
+ * csrfGuard runs first so a forged request is rejected before it costs a
+ * database round trip.
+ */
+app.use("/api/v1", csrfGuard, authGuard, router);
 
 app.get("/", (_req: Request, res: Response) => {
   res.status(StatusCodes.OK).json({

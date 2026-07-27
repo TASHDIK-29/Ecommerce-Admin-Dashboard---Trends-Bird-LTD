@@ -12,3 +12,155 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// ===========================================================================
+// Access control  (Modules 2-4: Permission, Role, User)
+//
+// These tables land with Module 1 rather than later, because the global auth
+// guard resolves `user -> role -> permissions` on every single request. The
+// CRUD routes for them arrive in their own modules; the structure has to exist
+// first for anything to be guarded at all.
+// ===========================================================================
+
+/// A module-level bucket of permissions, e.g. "Product".
+/// Section 5.2: permissions live at two levels so the UI can render a
+/// module-by-action grid instead of a hundred flat checkboxes.
+model PermissionGroup {
+  id          String       @id @default(uuid())
+  /// Display name as typed by the administrator, e.g. "Product".
+  name        String       @unique
+  /// Normalised module key used to build permission names, e.g. "product".
+  slug        String       @unique
+  description String?
+  permissions Permission[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("permission_groups")
+}
+
+/// One capability, named `module:action` in lower case, e.g. `product:create`.
+model Permission {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  /// The action half of the name, e.g. "create". Unique within a group.
+  action      String
+  description String?
+  groupId     String
+  group       PermissionGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([groupId, action])
+  @@index([groupId])
+  @@map("permissions")
+}
+
+enum RoleStatus {
+  ACTIVE
+  INACTIVE
+}
+
+/// A named bundle of permissions handed to a user (Section 5.3).
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  status      RoleStatus       @default(ACTIVE)
+  /// Marks the seeded Super Admin so it cannot be deleted or locked out.
+  isSystem    Boolean          @default(false)
+  permissions RolePermission[]
+  users       User[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("roles")
+}
+
+/// Join table between roles and permissions.
+///
+/// DELETE POLICY (Section 5.2 asks us to choose and state it): deleting a
+/// permission CASCADES these links away, so a role can never be left pointing
+/// at a permission that no longer exists.
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  assignedAt   DateTime   @default(now())
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+/// A dashboard account. Each user holds exactly one role (Section 5.4).
+model User {
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  /// bcrypt hash. Never selected into a response — see the `userSafeSelect`
+  /// projection in user.constant.ts.
+  password  String
+  phone     String?
+  gender    Gender?
+  /// Media reference. Becomes a real foreign key when the Media module lands.
+  avatarId  String?
+  /// Required and never defaulted (Section 5.4). Restrict, so a role that is
+  /// still held by someone cannot be deleted out from under its users.
+  roleId    String
+  role      Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  isActive  Boolean   @default(true)
+  /// DELETE POLICY: users are SOFT deleted. The row and its email are kept so
+  /// history stays intact; a deleted user can neither log in nor refresh.
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
+  refreshTokens RefreshToken[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([roleId])
+  @@index([isDeleted, isActive])
+  @@map("users")
+}
+
+// ===========================================================================
+// Module 1 — Authentication
+// ===========================================================================
+
+/// A stored, revocable refresh token (Section 5.1).
+///
+/// This is a table rather than a column on `users` so that logout can revoke
+/// server-side, refresh can rotate, sessions can be per-device, and a replayed
+/// token can be detected. Only the SHA-256 hash is stored: a database leak
+/// therefore does not hand over live sessions.
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  /// Set when this token is rotated, pointing at its successor. A request that
+  /// presents an already-rotated token is a replay, and revokes the chain.
+  replacedById String?       @unique
+  replacedBy   RefreshToken? @relation("TokenRotation", fields: [replacedById], references: [id], onDelete: SetNull)
+  previous     RefreshToken? @relation("TokenRotation")
+
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
