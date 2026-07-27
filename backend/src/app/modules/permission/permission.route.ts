@@ -1,6 +1,9 @@
 import { Router } from "express";
 
-import { requirePermission } from "../../middlewares/requirePermission";
+import {
+  requireAnyPermission,
+  requirePermission,
+} from "../../middlewares/requirePermission";
 import { validateRequest } from "../../middlewares/validateRequest";
 import { PermissionController } from "./permission.controller";
 import { PermissionValidation } from "./permission.validation";
@@ -9,14 +12,14 @@ const router = Router();
 
 router.get(
   "/actions",
-  requirePermission("permission:read"),
+  requireAnyPermission("permission:read", "role:read", "role:update"),
   PermissionController.getStandardActions,
 );
 
 router
   .route("/groups")
   .get(
-    requirePermission("permission:read"),
+    requireAnyPermission("permission:read", "role:read", "role:update"),
     validateRequest({ query: PermissionValidation.listQuerySchema }),
     PermissionController.getGroups,
   )
@@ -50,7 +53,7 @@ router
 router
   .route("/")
   .get(
-    requirePermission("permission:read"),
+    requireAnyPermission("permission:read", "role:read", "role:update"),
     validateRequest({ query: PermissionValidation.listQuerySchema }),
     PermissionController.getPermissions,
   )

@@ -321,13 +321,13 @@ the dashboard renders from this and drives its sidebar from the `:watch` entries
 
 | Method | Path | Permission |
 |---|---|---|
-| GET | `/permissions/actions` | `permission:read` |
-| GET | `/permissions/groups` | `permission:read` |
+| GET | `/permissions/actions` | `permission:read` **or** `role:read` / `role:update` |
+| GET | `/permissions/groups` | `permission:read` **or** `role:read` / `role:update` |
 | POST | `/permissions/groups` | `permission:create` |
 | GET | `/permissions/groups/:id` | `permission:read` |
 | PATCH | `/permissions/groups/:id` | `permission:update` |
 | DELETE | `/permissions/groups/:id` | `permission:delete` |
-| GET | `/permissions` | `permission:read` |
+| GET | `/permissions` | `permission:read` **or** `role:read` / `role:update` |
 | POST | `/permissions` | `permission:create` |
 | GET | `/permissions/:id` | `permission:read` |
 | PATCH | `/permissions/:id` | `permission:update` |
@@ -337,6 +337,11 @@ Naming a group `Product` and ticking Create + Read produces `product:create` and
 `product:read`. Actions are normalised (`"  Create "` → `create`, `"Bulk Import"` →
 `bulk-import`). On `PATCH`, `actions` is the **desired end state** — anything missing is
 removed, which is how the permission grid submits.
+
+The three **read** routes also accept `role:read` / `role:update`, because the Role
+screen's permission grid has to read the permission catalogue to render its checkboxes.
+A role that can edit roles but not see what it may grant would be useless. Writing
+permissions still requires `permission:create` / `:update` / `:delete`.
 </details>
 
 <details>
@@ -495,9 +500,8 @@ price *or* a `priceRange` computed from effective (sale) prices.
   five-attribute selection from creating thousands of rows by accident.
 - **HTML in `longDescription` is stored as received.** The field is length-capped but not
   sanitized, so a frontend must escape it or run it through a sanitizer before rendering.
-- **`GET /permissions/actions` requires `permission:read`**, so a role that can only manage
-  roles cannot fetch the standard action list for the grid. Arguably it should be readable
-  by anyone who can edit a role.
+- **Role status is not enforced on assignment history.** Deactivating a role blocks its
+  holders at the guard, but they keep the role on their record rather than being reassigned.
 
 ---
 
