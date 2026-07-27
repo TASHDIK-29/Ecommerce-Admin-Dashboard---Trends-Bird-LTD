@@ -144,7 +144,8 @@ model Media {
 
   avatarOf        User[]     @relation("UserAvatar")
   categoryImages  Category[] @relation("CategoryImage")
-  brandLogos      Brand[]    @relation("BrandLogo")
+  brandLogos      Brand[]          @relation("BrandLogo")
+  attributeValues AttributeValue[] @relation("AttributeValueMedia")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -196,4 +197,46 @@ model Brand {
 
   @@index([status])
   @@map("brands")
+}
+
+enum AttributeType {
+  DROPDOWN
+  RADIO
+  CHECKBOX
+  COLOR_SWATCH
+  IMAGE_SWATCH
+}
+
+model Attribute {
+  id     String           @id @default(uuid())
+  name   String           @unique
+  slug   String           @unique
+  type   AttributeType    @default(DROPDOWN)
+  values AttributeValue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@map("attributes")
+}
+
+model AttributeValue {
+  id          String    @id @default(uuid())
+  attributeId String
+  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  value       String
+  slug        String
+  colorCode   String?
+  mediaId     String?
+  media       Media?    @relation("AttributeValueMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  sortOrder   Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([attributeId, value])
+  @@unique([attributeId, slug])
+  @@index([attributeId])
+  @@map("attribute_values")
 }

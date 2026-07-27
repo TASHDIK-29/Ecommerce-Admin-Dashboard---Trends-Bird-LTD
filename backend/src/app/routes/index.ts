@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { AttributeRoutes } from "../modules/attribute/attribute.route";
 import { AuthRoutes } from "../modules/auth/auth.route";
 import { BrandRoutes } from "../modules/brand/brand.route";
 import { CategoryRoutes } from "../modules/category/category.route";
@@ -23,6 +24,7 @@ const moduleRoutes: ModuleRoute[] = [
   { path: "/media", route: MediaRoutes },
   { path: "/categories", route: CategoryRoutes },
   { path: "/brands", route: BrandRoutes },
+  { path: "/attributes", route: AttributeRoutes },
 ];
 
 moduleRoutes.forEach((moduleRoute) => {
