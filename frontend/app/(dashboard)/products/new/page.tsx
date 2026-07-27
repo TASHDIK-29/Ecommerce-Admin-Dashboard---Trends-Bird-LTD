@@ -3,16 +3,24 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
+import { ProductForm } from "@/components/products/product-form";
+import { Forbidden } from "@/components/shared/forbidden";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/lib/auth-context";
 
 export default function NewProductPage() {
+  const { can } = useAuth();
+
+  if (!can("product:create")) {
+    return <Forbidden permission="product:create" />;
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="New product"
-        description="The product form is built in the next step."
+        description="Details, brand and categories, media, and variants — saved in one request."
         actions={
           <Button variant="outline" asChild>
             <Link href="/products">
@@ -22,11 +30,8 @@ export default function NewProductPage() {
           </Button>
         }
       />
-      <Card>
-        <CardContent className="py-10 text-center text-sm text-muted-foreground">
-          The product form, with variants and media, lands in the next step.
-        </CardContent>
-      </Card>
+
+      <ProductForm />
     </div>
   );
 }
