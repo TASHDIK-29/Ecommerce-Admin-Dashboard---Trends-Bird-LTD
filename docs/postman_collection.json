@@ -1,0 +1,3686 @@
+{
+  "info": {
+    "name": "Trends Bird — Ecommerce Admin API",
+    "description": "Admin API for the Trends Bird backend intern assignment.\n\n## Getting started\n1. Run the API (`npm run dev`) and seed the database (`npm run seed`).\n2. Open **Authentication → Login (super admin)** and send it. The access token is saved to the `accessToken` collection variable automatically.\n3. Every other request uses `Authorization: Bearer {{accessToken}}`.\n\n## Checking 403 behaviour\nSend **Authentication → Login (limited catalog user)**. That saves `catalogToken`.\nThe requests in the **Access control checks** folder use it to prove that a low-privilege token is refused on permission, role and user routes — including the delete routes.\n\n## Token strategy\nThe API's primary strategy is HttpOnly cookies; `Authorization: Bearer` is accepted as a documented fallback so this collection needs no cookie or CSRF setup. If you prefer cookies, enable Postman's cookie jar and drop the Authorization header — you will then also need to send the `csrfToken` cookie value in an `X-CSRF-Token` header on every mutating request.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "catalogToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "permissionGroupId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "permissionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "roleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mediaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "brandId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attributeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attributeValueId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "variantId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attachmentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "permissionIdA",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "permissionIdB",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "roleUpdatePermissionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "colourValueId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "colourValueId2",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sizeValueId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sizeValueId2",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sizeAttributeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "catalogRoleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "csrfToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "Login, refresh with rotation, real logout, session.\n\nOrder matters when running the whole folder: the super-admin login and refresh come first, because logging in as the catalog user replaces the cookie jar's session.",
+      "item": [
+        {
+          "name": "Login (super admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Saves `{{accessToken}}` and `{{csrfToken}}`. Also sets the accessToken, refreshToken and csrfToken cookies.\n\nThe refresh token is never returned in the body - only as an HttpOnly cookie.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"superadmin@trendsbird.test\",\n  \"password\": \"SuperAdmin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('login succeeds', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"accessToken\", body.data.accessToken);",
+                  "pm.collectionVariables.set(\"csrfToken\", body.data.csrfToken);",
+                  "pm.test('returns a flat permission list', () => pm.expect(body.data.user.permissions).to.be.an('array'));",
+                  "pm.test('no password hash in the response', () => pm.expect(pm.response.text()).to.not.include('$2b$'));",
+                  "pm.test('no refresh token in the body', () => pm.expect(pm.response.text()).to.not.include('\"refreshToken\"'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "session"
+              ]
+            },
+            "description": "Returns the user, their role, and a flat array of permission names. The dashboard renders from this."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh (rotates the refresh token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Cookie-driven, so it echoes the CSRF token in the `X-CSRF-Token` header - exactly what the dashboard does. Without that header this returns 403.\n\nA new refresh token is issued and the old one is revoked. Presenting an already-rotated token revokes the whole chain - reuse detection.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"accessToken\", body.data.accessToken);",
+                  "pm.collectionVariables.set(\"csrfToken\", body.data.csrfToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Seed collection variables",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions?limit=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
+            },
+            "description": "Run this once after logging in. It fills the permission-id variables the Role and User examples use, so the whole collection can be executed top to bottom in the Collection Runner without hand-editing ids."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const byName = (n) => (body.data.find((p) => p.name === n) || {}).id || '';",
+                  "pm.collectionVariables.set('permissionIdA', byName('product:read'));",
+                  "pm.collectionVariables.set('permissionIdB', byName('product:update'));",
+                  "pm.collectionVariables.set('roleUpdatePermissionId', byName('role:update'));",
+                  "pm.test('permission ids captured', () => pm.expect(pm.collectionVariables.get('permissionIdA')).to.not.eql(''));",
+                  "pm.sendRequest({ url: pm.variables.replaceIn('{{baseUrl}}/roles?limit=100'), method: 'GET',",
+                  "  header: { Authorization: 'Bearer ' + pm.collectionVariables.get('accessToken') } }, (err, res) => {",
+                  "    if (err) return;",
+                  "    const role = res.json().data.find((r) => r.name === 'Catalog Manager');",
+                  "    if (role) pm.collectionVariables.set('catalogRoleId', role.id);",
+                  "  });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (limited catalog user)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Saves `{{catalogToken}}`. This account has catalog access only - no permission, role or user rights.\n\nIt also replaces the cookie-jar session, which is why it runs after the refresh request above.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"catalog@trendsbird.test\",\n  \"password\": \"Catalog@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('login succeeds', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"catalogToken\", body.data.accessToken);",
+                  "pm.collectionVariables.set(\"csrfToken\", body.data.csrfToken);",
+                  "pm.test('has no user:create', () => pm.expect(body.data.user.permissions).to.not.include('user:create'));",
+                  "pm.test('has no role:update', () => pm.expect(body.data.user.permissions).to.not.include('role:update'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - wrong password (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Returns the same message as a wrong email, so the form cannot be used to discover which accounts exist.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"superadmin@trendsbird.test\",\n  \"password\": \"WrongPassword@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - unknown email (401, identical message)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody@trendsbird.test\",\n  \"password\": \"WrongPassword@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));",
+                  "pm.test('message is Invalid email or password.', () => pm.expect(pm.response.json().message).to.eql('Invalid email or password.'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Permission",
+      "description": "The vocabulary of the system: groups per module, one permission per action.",
+      "item": [
+        {
+          "name": "Standard action list",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/actions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "actions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List groups (the module-by-action grid)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/groups?page=1&limit=20&searchTerm=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "groups"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "searchTerm",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"permissionGroupId\", body.data[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create a group with its actions in one step",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "groups"
+              ]
+            },
+            "description": "Naming a group `Catalog Discount` and ticking Create produces `catalog-discount:create`. Action names are normalised: `\"  Create \"` and `\"CREATE\"` both become `create`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Catalog Discount\",\n  \"description\": \"Discounts applied across the catalog.\",\n  \"actions\": [\n    \"create\",\n    \"read\",\n    \"update\",\n    \"delete\",\n    \"watch\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"permissionGroupId\", body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get one group",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/groups/{{permissionGroupId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "groups",
+                "{{permissionGroupId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit a group (actions are the desired end state)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/groups/{{permissionGroupId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "groups",
+                "{{permissionGroupId}}"
+              ]
+            },
+            "description": "Renaming the group renames every permission inside it. Any action missing from `actions` is removed — that is how the permission grid submits.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coupon Discount\",\n  \"actions\": [\n    \"create\",\n    \"read\",\n    \"delete\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add a custom action",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions"
+              ]
+            },
+            "description": "A capability outside the standard set. `Bulk Import` normalises to `bulk-import`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupId\": \"{{permissionGroupId}}\",\n  \"action\": \"Bulk Import\",\n  \"description\": \"Import records in bulk.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"permissionId\", body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List permissions (flat)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions?limit=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
+            },
+            "description": "The flat list the role grid ticks against."
+          },
+          "response": []
+        },
+        {
+          "name": "Get one permission",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/{{permissionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "{{permissionId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update a permission",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/{{permissionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "{{permissionId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated description.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a permission (cascades role links)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/{{permissionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "{{permissionId}}"
+              ]
+            },
+            "description": "The permission goes and the role links go with it, so no role is left pointing at a missing record. The response reports how many roles were affected."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a group",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/groups/{{permissionGroupId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "groups",
+                "{{permissionGroupId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Role",
+      "description": "Named bundles of permissions.",
+      "item": [
+        {
+          "name": "List roles (with user counts)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create a role and grant permissions in one step",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ]
+            },
+            "description": "Pass `grantAll: true` instead of `permissionIds` for an administrator role.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Content Editor\",\n  \"description\": \"Edits catalog content.\",\n  \"status\": \"ACTIVE\",\n  \"permissionIds\": [\n    \"{{permissionIdA}}\",\n    \"{{permissionIdB}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 201) { const body = pm.response.json(); pm.collectionVariables.set('roleId', body.data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get one role (full permission set)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}"
+              ]
+            },
+            "description": "Returns every permission so the edit screen can pre-tick the grid."
+          },
+          "response": []
+        },
+        {
+          "name": "Update a role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Senior Content Editor\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Grant individual permissions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}",
+                "permissions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissionIds\": [\n    \"{{roleUpdatePermissionId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke individual permissions",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}",
+                "permissions"
+              ]
+            },
+            "description": "A revoked permission takes effect on the holder's very next request, not at their next token refresh.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissionIds\": [\n    \"{{roleUpdatePermissionId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Grant all (administrator shortcut)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}/permissions/grant-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}",
+                "permissions",
+                "grant-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a role",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}"
+              ]
+            },
+            "description": "Refused with 409 while any user still holds it, and refused if it would leave nobody able to manage roles."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "description": "Dashboard accounts. Each holds exactly one role.",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1&limit=20&searchTerm=&roleId=&isActive=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "searchTerm",
+                  "value": ""
+                },
+                {
+                  "key": "roleId",
+                  "value": ""
+                },
+                {
+                  "key": "isActive",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Search by name or email; filter by role and status. All server-side."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create a user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "`roleId` is required and never defaulted. Omitting it returns 422 naming the field.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dana Editor\",\n  \"email\": \"dana.editor@trendsbird.test\",\n  \"password\": \"Editor@123\",\n  \"phone\": \"+8801711111111\",\n  \"gender\": \"FEMALE\",\n  \"roleId\": \"{{catalogRoleId}}\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('userId', pm.response.json().data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get one user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update a user (including their role)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dana Manager\",\n  \"roleId\": \"{{catalogRoleId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate a user",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}",
+                "status"
+              ]
+            },
+            "description": "A deactivated user can neither log in nor refresh, and their existing tokens stop working immediately.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Activate a user",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a user (soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Soft delete: the row is kept with `isDeleted`, excluded from reads, and the email stays reserved."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Media",
+      "description": "Shared library. One asset attaches to many products.",
+      "item": [
+        {
+          "name": "Upload files",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "upload"
+              ]
+            },
+            "description": "Content is validated by decoding the bytes — the extension and the client's Content-Type are ignored. A text file renamed `.png` is rejected with 422. SVG is deliberately not accepted (inline script).\n\nEvery image gets a generated 400px WebP thumbnail. Batch uploads are all-or-nothing.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": [],
+                  "description": "Pick one or more images. Field name is `files`; `file` also works."
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('mediaId', pm.response.json().data[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List the library",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media?page=1&limit=20&type=&searchTerm=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "type",
+                  "value": ""
+                },
+                {
+                  "key": "searchTerm",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "`type` filters to IMAGE or VIDEO."
+          },
+          "response": []
+        },
+        {
+          "name": "Get one asset",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{mediaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "{{mediaId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit metadata",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{mediaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "{{mediaId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"altText\": \"Red banner\",\n  \"title\": \"Homepage banner\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete (refused while attached)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{mediaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "{{mediaId}}"
+              ]
+            },
+            "description": "409 if any user avatar, category image, brand logo, attribute value or product attachment still references it."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete with force (detaches first)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{mediaId}}?force=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "{{mediaId}}"
+              ],
+              "query": [
+                {
+                  "key": "force",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Detaches every reference, then removes the record, the stored file and its thumbnail."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Category",
+      "description": "Nested tree, unlimited depth.",
+      "item": [
+        {
+          "name": "Category tree",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories/tree?isActive=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                "tree"
+              ],
+              "query": [
+                {
+                  "key": "isActive",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "The real nested tree with a `depth` on every node — what the parent picker renders from."
+          },
+          "response": []
+        },
+        {
+          "name": "List categories (flat)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories?page=1&limit=20&parentId=&isActive=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "parentId",
+                  "value": ""
+                },
+                {
+                  "key": "isActive",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create a root category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Electronics\",\n  \"description\": \"Devices and gadgets.\",\n  \"isActive\": true,\n  \"sortOrder\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('categoryId', pm.response.json().data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create a child category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            },
+            "description": "Nesting is unlimited: Electronics > Phones > Android and deeper.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Phones\",\n  \"parentId\": \"{{categoryId}}\",\n  \"sortOrder\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get one category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                "{{categoryId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update a category",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Consumer Electronics\",\n  \"sortOrder\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cycle rejection (409)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "A category can never become its own ancestor. Rejected at any depth, not just the direct case.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parentId\": \"{{categoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete a category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "Refused with 409 while it still has children — nothing is orphaned."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Brand",
+      "description": "One brand per product, many products per brand.",
+      "item": [
+        {
+          "name": "List brands",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/brands?page=1&limit=20&status=&searchTerm=&sort=name",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "brands"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": ""
+                },
+                {
+                  "key": "searchTerm",
+                  "value": ""
+                },
+                {
+                  "key": "sort",
+                  "value": "name"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create a brand",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "brands"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Trendwear\",\n  \"description\": \"In-house label.\",\n  \"logoId\": \"{{mediaId}}\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('brandId', pm.response.json().data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get one brand",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/brands/{{brandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "brands",
+                "{{brandId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update a brand",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/brands/{{brandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "brands",
+                "{{brandId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated.\",\n  \"status\": \"INACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a brand",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/brands/{{brandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "brands",
+                "{{brandId}}"
+              ]
+            },
+            "description": "Refused with 409 while products still reference it."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Attribute",
+      "description": "The dimensions a product varies along.",
+      "item": [
+        {
+          "name": "List attributes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attributes?page=1&limit=20&type=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attributes"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "type",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create a colour attribute (hex values)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attributes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attributes"
+              ]
+            },
+            "description": "A COLOR_SWATCH value must carry `colorCode`. Omitting it returns 422; passing a `mediaId` instead also returns 422.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Colour\",\n  \"type\": \"COLOR_SWATCH\",\n  \"values\": [\n    {\n      \"value\": \"Red\",\n      \"colorCode\": \"#C0392B\"\n    },\n    {\n      \"value\": \"Blue\",\n      \"colorCode\": \"#2980B9\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { const b = pm.response.json();",
+                  "  pm.collectionVariables.set('attributeId', b.data.id);",
+                  "  pm.collectionVariables.set('attributeValueId', b.data.values[0].id);",
+                  "  pm.collectionVariables.set('colourValueId', b.data.values[0].id);",
+                  "  pm.collectionVariables.set('colourValueId2', (b.data.values[1] || b.data.values[0]).id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create a size attribute (plain dropdown)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attributes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attributes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Size\",\n  \"type\": \"DROPDOWN\",\n  \"values\": [\n    {\n      \"value\": \"S\"\n    },\n    {\n      \"value\": \"M\"\n    },\n    {\n      \"value\": \"XL\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { const b = pm.response.json();",
+                  "  pm.collectionVariables.set('sizeAttributeId', b.data.id);",
+                  "  pm.collectionVariables.set('sizeValueId', b.data.values[0].id);",
+                  "  pm.collectionVariables.set('sizeValueId2', (b.data.values[2] || b.data.values[1]).id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create an image swatch attribute",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attributes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attributes"
+              ]
+            },
+            "description": "An IMAGE_SWATCH value must carry `mediaId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Fabric\",\n  \"type\": \"IMAGE_SWATCH\",\n  \"values\": [\n    {\n      \"value\": \"Denim\",\n      \"mediaId\": \"{{mediaId}}\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get one attribute",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attributes/{{attributeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attributes",
+                "{{attributeId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update an attribute",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attributes/{{attributeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attributes",
+                "{{attributeId}}"
+              ]
+            },
+            "description": "Changing `type` re-validates every existing value, so a type change cannot silently invalidate them.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Colour / Shade\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add values (without recreating the attribute)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attributes/{{attributeId}}/values",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attributes",
+                "{{attributeId}}",
+                "values"
+              ]
+            },
+            "description": "Values are unique within their attribute — `Red` may exist under Colour and separately under another attribute.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"values\": [\n    {\n      \"value\": \"Green\",\n      \"colorCode\": \"#27AE60\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit a value",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attributes/{{attributeId}}/values/{{attributeValueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attributes",
+                "{{attributeId}}",
+                "values",
+                "{{attributeValueId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"Crimson\",\n  \"colorCode\": \"#B03A2E\",\n  \"sortOrder\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a value",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attributes/{{attributeId}}/values/{{attributeValueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attributes",
+                "{{attributeId}}",
+                "values",
+                "{{attributeValueId}}"
+              ]
+            },
+            "description": "Refused with 409 once a product variant uses it — deleting it would corrupt every variant built on it."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete an attribute",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attributes/{{attributeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attributes",
+                "{{attributeId}}"
+              ]
+            },
+            "description": "Refused with 409 while variants or products use it."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Product",
+      "description": "The centre of the catalog: simple or variable.",
+      "item": [
+        {
+          "name": "List products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products?page=1&limit=20&searchTerm=&categoryId=&brandId=&isActive=&hasVariants=&stockStatus=&sort=-createdAt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "searchTerm",
+                  "value": ""
+                },
+                {
+                  "key": "categoryId",
+                  "value": ""
+                },
+                {
+                  "key": "brandId",
+                  "value": ""
+                },
+                {
+                  "key": "isActive",
+                  "value": ""
+                },
+                {
+                  "key": "hasVariants",
+                  "value": ""
+                },
+                {
+                  "key": "stockStatus",
+                  "value": ""
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt"
+                }
+              ]
+            },
+            "description": "Each row carries thumbnail, brand, categories, and a flat `price` or a `priceRange` computed from effective (sale) prices."
+          },
+          "response": []
+        },
+        {
+          "name": "Create a SIMPLE product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "description": "Price, sale price and stock live on the product. `stockStatus` is derived from the count.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"The Pragmatic Programmer\",\n  \"sku\": \"BOOK-001\",\n  \"shortDescription\": \"A classic on software craftsmanship.\",\n  \"price\": 45.5,\n  \"salePrice\": 39.99,\n  \"stock\": 12,\n  \"lowStockThreshold\": 5,\n  \"brandId\": \"{{brandId}}\",\n  \"categoryIds\": [\n    \"{{categoryId}}\"\n  ],\n  \"media\": [\n    {\n      \"mediaId\": \"{{mediaId}}\",\n      \"isThumbnail\": true,\n      \"sortOrder\": 0\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('productId', pm.response.json().data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create a VARIABLE product with variants (atomic)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "description": "The whole create is one transaction — if a variant fails validation, no half-built product survives.\n\nTwo variants with the same attribute combination are rejected with 409, including when the ids are listed in a different order.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Classic Tee\",\n  \"sku\": \"TEE-001\",\n  \"hasVariants\": true,\n  \"brandId\": \"{{brandId}}\",\n  \"categoryIds\": [\n    \"{{categoryId}}\"\n  ],\n  \"attributeIds\": [\n    \"{{attributeId}}\",\n    \"{{sizeAttributeId}}\"\n  ],\n  \"media\": [\n    {\n      \"mediaId\": \"{{mediaId}}\",\n      \"isThumbnail\": true,\n      \"sortOrder\": 0\n    }\n  ],\n  \"variants\": [\n    {\n      \"sku\": \"TEE-001-RED-S\",\n      \"attributeValueIds\": [\n        \"{{colourValueId}}\",\n        \"{{sizeValueId}}\"\n      ],\n      \"price\": 25,\n      \"stock\": 10\n    },\n    {\n      \"sku\": \"TEE-001-RED-XL\",\n      \"attributeValueIds\": [\n        \"{{colourValueId}}\",\n        \"{{sizeValueId2}}\"\n      ],\n      \"price\": 27,\n      \"salePrice\": 24,\n      \"stock\": 4,\n      \"lowStockThreshold\": 5\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { const b = pm.response.json();",
+                  "  pm.collectionVariables.set('productId', b.data.id);",
+                  "  if (b.data.variants.length) pm.collectionVariables.set('variantId', b.data.variants[0].id);",
+                  "  if (b.data.media.length) pm.collectionVariables.set('attachmentId', b.data.media[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject: price on a variable product (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "description": "The `hasVariants` flag drives validation in both directions: a price on a variable product and a variant on a simple one are both rejected.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Invalid Variable\",\n  \"sku\": \"BAD-001\",\n  \"hasVariants\": true,\n  \"price\": 20,\n  \"variants\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject: sale price above price (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Invalid Pricing\",\n  \"sku\": \"BAD-002\",\n  \"price\": 10,\n  \"salePrice\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get one product (everything the edit screen needs)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            },
+            "description": "Categories, brand, media, variants and each variant's attribute values."
+          },
+          "response": []
+        },
+        {
+          "name": "Update a product",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Classic Tee (2nd Edition)\",\n  \"isFeatured\": true,\n  \"categoryIds\": [\n    \"{{categoryId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate the variant matrix",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/variants/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}",
+                "variants",
+                "generate"
+              ]
+            },
+            "description": "Produces every combination, skipping any that already exist. Pass `replaceExisting: true` to rebuild from scratch. Capped at 200 combinations.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attributes\": [\n    {\n      \"attributeId\": \"{{attributeId}}\",\n      \"valueIds\": [\n        \"{{colourValueId}}\",\n        \"{{colourValueId2}}\"\n      ]\n    },\n    {\n      \"attributeId\": \"{{sizeAttributeId}}\",\n      \"valueIds\": [\n        \"{{sizeValueId}}\",\n        \"{{sizeValueId2}}\"\n      ]\n    }\n  ],\n  \"skuPrefix\": \"TEE\",\n  \"price\": 22,\n  \"stock\": 7\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add one variant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/variants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}",
+                "variants"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"TEE-001-BLUE-M\",\n  \"attributeValueIds\": [\n    \"{{colourValueId2}}\",\n    \"{{sizeValueId2}}\"\n  ],\n  \"price\": 25,\n  \"stock\": 8\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update a variant",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/variants/{{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}",
+                "variants",
+                "{{variantId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 30,\n  \"stock\": 50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a variant",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/variants/{{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}",
+                "variants",
+                "{{variantId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Attach media (product, variant or attribute value)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/media",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}",
+                "media"
+              ]
+            },
+            "description": "Attaching to an attribute value is how picking Red shows the right photos without duplicating them on every Red variant.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attachments\": [\n    {\n      \"mediaId\": \"{{mediaId}}\",\n      \"isGallery\": true,\n      \"sortOrder\": 1\n    },\n    {\n      \"mediaId\": \"{{mediaId}}\",\n      \"variantId\": \"{{variantId}}\",\n      \"isThumbnail\": true\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set the thumbnail (demotes the previous one)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/media/{{attachmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}",
+                "media",
+                "{{attachmentId}}"
+              ]
+            },
+            "description": "Never two thumbnails at once — enforced by a partial unique index in PostgreSQL, not only in application code.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isThumbnail\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reorder the gallery",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/media/reorder",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}",
+                "media",
+                "reorder"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": [\n    {\n      \"attachmentId\": \"{{attachmentId}}\",\n      \"sortOrder\": 0\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Detach media (the library asset survives)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/media/{{attachmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}",
+                "media",
+                "{{attachmentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            },
+            "description": "Variants and media attachments go with it, but the media assets themselves survive — other products may use them."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Access control checks",
+      "description": "Run 'Login (limited catalog user)' first. Every request here must return 403 — and the ones with no token must return 401.",
+      "item": [
+        {
+          "name": "Garbage token → 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer not.a.real.jwt"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "session"
+              ]
+            },
+            "description": "A malformed token is rejected with 401. The Authorization header is read before any cookie, so this stays a 401 even if a session cookie is present in the jar."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tampered signature → 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDAiLCJlbWFpbCI6ImZvcmdlZEB0cmVuZHNiaXJkLnRlc3QifQ.AAAAinvalidsignatureAAAA"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "session"
+              ]
+            },
+            "description": "Correctly structured JWT signed with the wrong key. Rejected with 401."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "No credentials at all → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Send this from a fresh client with no cookie jar. Authentication is applied to the whole /api/v1 tree, so even an unknown path returns 401 rather than 404.\n\nNOTE: in the Collection Runner this returns 403 instead, because Postman replays the session cookie set by the earlier login and the catalog user simply lacks `user:read`. Both answers prove the route is guarded."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('denied (401 without cookies, 403 with the catalog session)', () => pm.expect([401, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog user reads permissions → 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{catalogToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "groups"
+              ]
+            },
+            "description": "Uses `{{catalogToken}}` — the seeded catalog user, which holds no permission, role or user rights."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog user creates a permission group → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{catalogToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "groups"
+              ]
+            },
+            "description": "Uses `{{catalogToken}}` — the seeded catalog user, which holds no permission, role or user rights.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nope\",\n  \"actions\": [\n    \"read\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog user DELETES a permission → 403",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{catalogToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/00000000-0000-4000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "00000000-0000-4000-8000-000000000000"
+              ]
+            },
+            "description": "Uses `{{catalogToken}}` — the seeded catalog user, which holds no permission, role or user rights."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog user reads roles → 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{catalogToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ]
+            },
+            "description": "Uses `{{catalogToken}}` — the seeded catalog user, which holds no permission, role or user rights."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog user creates a role → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{catalogToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ]
+            },
+            "description": "Uses `{{catalogToken}}` — the seeded catalog user, which holds no permission, role or user rights.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nope\",\n  \"permissionIds\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog user DELETES a role → 403",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{catalogToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/00000000-0000-4000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "00000000-0000-4000-8000-000000000000"
+              ]
+            },
+            "description": "Uses `{{catalogToken}}` — the seeded catalog user, which holds no permission, role or user rights."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog user grants permissions to a role → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{catalogToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/00000000-0000-4000-8000-000000000000/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "00000000-0000-4000-8000-000000000000",
+                "permissions"
+              ]
+            },
+            "description": "Uses `{{catalogToken}}` — the seeded catalog user, which holds no permission, role or user rights.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissionIds\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog user reads users → 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{catalogToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Uses `{{catalogToken}}` — the seeded catalog user, which holds no permission, role or user rights."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog user creates a user → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{catalogToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Uses `{{catalogToken}}` — the seeded catalog user, which holds no permission, role or user rights.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nope\",\n  \"email\": \"nope@trendsbird.test\",\n  \"password\": \"Nope@1234\",\n  \"roleId\": \"00000000-0000-4000-8000-000000000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog user DELETES a user → 403",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{catalogToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/00000000-0000-4000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "00000000-0000-4000-8000-000000000000"
+              ]
+            },
+            "description": "Uses `{{catalogToken}}` — the seeded catalog user, which holds no permission, role or user rights."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog user CAN read products → 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{catalogToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "description": "The same token succeeds on catalog modules, which shows the 403s above are permission-based and not a broken token."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Session teardown (run last)",
+      "description": "These two requests end the current session on purpose, so they sit at the end of the collection. Running them mid-collection would break every folder above.",
+      "item": [
+        {
+          "name": "Change own password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "Revokes every session for this user, including the current one. Re-run `npm run seed` afterwards to restore the documented password.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"SuperAdmin@123\",\n  \"newPassword\": \"NewSuperAdmin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout (revokes server side)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Cookie-driven, so it echoes the CSRF token in the `X-CSRF-Token` header. The refresh token stops working immediately. Clearing a browser cookie alone would not achieve this.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

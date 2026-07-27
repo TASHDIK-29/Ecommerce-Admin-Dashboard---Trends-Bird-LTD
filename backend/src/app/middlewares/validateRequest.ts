@@ -7,6 +7,18 @@ export interface RequestSchemas {
   query?: ZodType;
 }
 
+const withoutEmptyValues = (query: unknown): Record<string, unknown> => {
+  const source = (query ?? {}) as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(source)) {
+    if (typeof value === "string" && value.trim() === "") continue;
+    result[key] = value;
+  }
+
+  return result;
+};
+
 export const validateRequest =
   (schemas: RequestSchemas): RequestHandler =>
   async (req, _res, next) => {
@@ -20,7 +32,7 @@ export const validateRequest =
       }
 
       if (schemas.query) {
-        const parsed = await schemas.query.parseAsync(req.query);
+        const parsed = await schemas.query.parseAsync(withoutEmptyValues(req.query));
         Object.defineProperty(req, "validatedQuery", {
           value: parsed,
           writable: true,

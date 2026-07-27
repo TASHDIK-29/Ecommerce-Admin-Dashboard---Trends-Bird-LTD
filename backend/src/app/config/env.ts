@@ -106,7 +106,7 @@ const loadEnvVariables = (): EnvConfig => {
     MAX_FILE_SIZE_MB: Number(process.env.MAX_FILE_SIZE_MB ?? 10),
     LOGIN_RATE_LIMIT: {
       WINDOW_MINUTES: Number(process.env.LOGIN_RATE_LIMIT_WINDOW_MINUTES ?? 15),
-      MAX_FAILURES: Number(process.env.LOGIN_RATE_LIMIT_MAX_FAILURES ?? 10),
+      MAX_FAILURES: Number(process.env.LOGIN_RATE_LIMIT_MAX_FAILURES ?? 20),
     },
   };
 };

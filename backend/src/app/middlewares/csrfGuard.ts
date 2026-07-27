@@ -10,6 +10,8 @@ export const CSRF_HEADER = "x-csrf-token";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+const CSRF_EXEMPT_ROUTES = new Set(["POST /auth/login"]);
+
 const safeEqual = (a: string, b: string): boolean => {
   const left = Buffer.from(a);
   const right = Buffer.from(b);
@@ -17,8 +19,24 @@ const safeEqual = (a: string, b: string): boolean => {
   return crypto.timingSafeEqual(left, right);
 };
 
+const usesBearerAuth = (req: { headers: { authorization?: string } }): boolean => {
+  const header = req.headers.authorization;
+  return typeof header === "string" && header.startsWith("Bearer ") && header.length > 7;
+};
+
 export const csrfGuard: RequestHandler = (req, _res, next) => {
   if (!MUTATING_METHODS.has(req.method.toUpperCase())) {
+    next();
+    return;
+  }
+
+  if (usesBearerAuth(req)) {
+    next();
+    return;
+  }
+
+  const path = req.path.replace(/\/+$/, "") || "/";
+  if (CSRF_EXEMPT_ROUTES.has(`${req.method.toUpperCase()} ${path}`)) {
     next();
     return;
   }

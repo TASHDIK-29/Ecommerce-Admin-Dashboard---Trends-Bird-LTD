@@ -23,15 +23,15 @@ const isPublicRoute = (req: Request): boolean => {
 const extractToken = (
   req: Request,
 ): { token: string; source: AuthSource } | undefined => {
-  const cookieToken = req.cookies?.[ACCESS_TOKEN_COOKIE];
-  if (typeof cookieToken === "string" && cookieToken.length > 0) {
-    return { token: cookieToken, source: "cookie" };
-  }
-
   const header = req.headers.authorization;
   if (typeof header === "string" && header.startsWith("Bearer ")) {
     const token = header.slice("Bearer ".length).trim();
     if (token.length > 0) return { token, source: "bearer" };
+  }
+
+  const cookieToken = req.cookies?.[ACCESS_TOKEN_COOKIE];
+  if (typeof cookieToken === "string" && cookieToken.length > 0) {
+    return { token: cookieToken, source: "cookie" };
   }
 
   return undefined;
