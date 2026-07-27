@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import type { ErrorRequestHandler } from "express";
 import { StatusCodes } from "http-status-codes";
+import { MulterError } from "multer";
 import { ZodError } from "zod";
 
 import { isDevelopment } from "../config/env";
@@ -9,6 +10,7 @@ import {
   handlePrismaKnownError,
   handlePrismaValidationError,
 } from "../helpers/handlePrismaError";
+import { handleMulterError } from "../helpers/handleMulterError";
 import { handleZodError } from "../helpers/handleZodError";
 import type { TErrorSource } from "../interfaces/error.types";
 
@@ -17,7 +19,12 @@ export const globalErrorHandler: ErrorRequestHandler = (err, _req, res, _next) =
   let message = "Something went wrong.";
   let errorSources: TErrorSource[] = [];
 
-  if (err instanceof ZodError) {
+  if (err instanceof MulterError) {
+    const normalized = handleMulterError(err);
+    statusCode = normalized.statusCode;
+    message = normalized.message;
+    errorSources = normalized.errorSources;
+  } else if (err instanceof ZodError) {
     const normalized = handleZodError(err);
     statusCode = normalized.statusCode;
     message = normalized.message;

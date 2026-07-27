@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { AuthRoutes } from "../modules/auth/auth.route";
+import { MediaRoutes } from "../modules/media/media.route";
 import { PermissionRoutes } from "../modules/permission/permission.route";
 import { RoleRoutes } from "../modules/role/role.route";
 import { UserRoutes } from "../modules/user/user.route";
@@ -17,6 +18,7 @@ const moduleRoutes: ModuleRoute[] = [
   { path: "/permissions", route: PermissionRoutes },
   { path: "/roles", route: RoleRoutes },
   { path: "/users", route: UserRoutes },
+  { path: "/media", route: MediaRoutes },
 ];
 
 moduleRoutes.forEach((moduleRoute) => {

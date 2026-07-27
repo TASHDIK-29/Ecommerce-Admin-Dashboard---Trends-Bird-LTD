@@ -80,6 +80,7 @@ model User {
   phone     String?
   gender    Gender?
   avatarId  String?
+  avatar    Media?    @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
   roleId    String
   role      Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
   isActive  Boolean   @default(true)
@@ -87,11 +88,13 @@ model User {
   deletedAt DateTime?
 
   refreshTokens RefreshToken[]
+  uploadedMedia Media[] @relation("MediaUploader")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([roleId])
+  @@index([avatarId])
   @@index([isDeleted, isActive])
   @@map("users")
 }
@@ -114,4 +117,38 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+model Media {
+  id           String    @id @default(uuid())
+  fileName     String
+  storedPath   String
+  url          String
+  thumbnailUrl String?
+  thumbnailPath String?
+  mimeType     String
+  type         MediaType
+  size         Int
+  width        Int?
+  height       Int?
+  altText      String?
+  title        String?
+
+  uploadedById String?
+  uploadedBy   User?     @relation("MediaUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  avatarOf User[] @relation("UserAvatar")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([uploadedById])
+  @@index([createdAt])
+  @@map("media")
 }
