@@ -35,6 +35,15 @@ export const useMediaList = (query: ListQuery, enabled = true) =>
     enabled,
   });
 
+/** Resolves a stored id back to the asset, so an edit form can show a preview. */
+export const useMediaAsset = (id: string | null | undefined) =>
+  useQuery({
+    queryKey: [...MEDIA_KEY, "detail", id],
+    queryFn: () => api.get<MediaAsset>(`/media/${id}`),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+
 export const useUploadMedia = () => {
   const queryClient = useQueryClient();
 
