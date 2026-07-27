@@ -3,6 +3,7 @@ import { Router } from "express";
 import { AuthRoutes } from "../modules/auth/auth.route";
 import { PermissionRoutes } from "../modules/permission/permission.route";
 import { RoleRoutes } from "../modules/role/role.route";
+import { UserRoutes } from "../modules/user/user.route";
 
 export const router = Router();
 
@@ -15,6 +16,7 @@ const moduleRoutes: ModuleRoute[] = [
   { path: "/auth", route: AuthRoutes },
   { path: "/permissions", route: PermissionRoutes },
   { path: "/roles", route: RoleRoutes },
+  { path: "/users", route: UserRoutes },
 ];
 
 moduleRoutes.forEach((moduleRoute) => {

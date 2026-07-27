@@ -2,9 +2,12 @@ import { StatusCodes } from "http-status-codes";
 
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../error/AppError";
+import {
+  assertRoleChangeKeepsAManager,
+  ROLE_MANAGE_PERMISSION,
+} from "../../utils/accessControl";
 import { buildListQuery, buildMeta } from "../../utils/buildListQuery";
 import {
-  ROLE_MANAGE_PERMISSION,
   roleDetailSelect,
   roleListSelect,
   roleSearchableFields,
@@ -40,44 +43,6 @@ const resolvePermissions = async (permissionIds: string[]) => {
   }
 
   return found;
-};
-
-const countActiveUsers = (roleId: string): Promise<number> =>
-  prisma.user.count({ where: { roleId, isActive: true, isDeleted: false } });
-
-const countOtherRoleManagers = (roleId: string): Promise<number> =>
-  prisma.role.count({
-    where: {
-      id: { not: roleId },
-      status: "ACTIVE",
-      permissions: { some: { permission: { name: ROLE_MANAGE_PERMISSION } } },
-      users: { some: { isActive: true, isDeleted: false } },
-    },
-  });
-
-const assertRoleManagementPreserved = async (
-  roleId: string,
-  nextHasRoleUpdate: boolean,
-  nextIsActive: boolean,
-): Promise<void> => {
-  const activeUsers = await countActiveUsers(roleId);
-  const remainsManager = nextHasRoleUpdate && nextIsActive && activeUsers > 0;
-
-  if (remainsManager) return;
-
-  const otherManagers = await countOtherRoleManagers(roleId);
-  if (otherManagers > 0) return;
-
-  throw new AppError(
-    StatusCodes.CONFLICT,
-    `This change would leave nobody able to manage roles. At least one active role holding "${ROLE_MANAGE_PERMISSION}" must have an active user.`,
-    [
-      {
-        path: "permissionIds",
-        message: `"${ROLE_MANAGE_PERMISSION}" must remain with an active user on some role.`,
-      },
-    ],
-  );
 };
 
 const shapeRole = <T extends { permissions?: { assignedAt: Date; permission: unknown }[] }>(
@@ -223,7 +188,7 @@ const updateRole = async (id: string, payload: IUpdateRolePayload) => {
     );
   }
 
-  await assertRoleManagementPreserved(id, nextHasRoleUpdate, nextStatus === "ACTIVE");
+  await assertRoleChangeKeepsAManager(id, nextHasRoleUpdate, nextStatus === "ACTIVE");
 
   await prisma.$transaction(async (tx) => {
     await tx.role.update({
@@ -268,7 +233,7 @@ const removePermissions = async (id: string, payload: IModifyPermissionsPayload)
     (link) => link.permission.name === ROLE_MANAGE_PERMISSION,
   );
 
-  await assertRoleManagementPreserved(id, nextHasRoleUpdate, role.status === "ACTIVE");
+  await assertRoleChangeKeepsAManager(id, nextHasRoleUpdate, role.status === "ACTIVE");
 
   const result = await prisma.rolePermission.deleteMany({
     where: { roleId: id, permissionId: { in: [...removing] } },
@@ -330,7 +295,7 @@ const deleteRole = async (id: string) => {
     );
   }
 
-  await assertRoleManagementPreserved(id, false, false);
+  await assertRoleChangeKeepsAManager(id, false, false);
 
   await prisma.role.delete({ where: { id } });
 

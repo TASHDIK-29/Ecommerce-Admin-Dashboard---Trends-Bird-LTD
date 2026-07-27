@@ -1,5 +1,3 @@
-export const ROLE_MANAGE_PERMISSION = "role:update";
-
 export const roleSearchableFields = ["name", "description"] as const;
 
 export const roleSortableFields = ["name", "status", "createdAt", "updatedAt"] as const;

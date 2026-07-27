@@ -1,6 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 
+import { envVars } from "../../config/env";
 import { validateRequest } from "../../middlewares/validateRequest";
 import { AuthController } from "./auth.controller";
 import { AuthValidation } from "./auth.validation";
@@ -8,8 +9,8 @@ import { AuthValidation } from "./auth.validation";
 const router = Router();
 
 const loginRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
+  windowMs: envVars.LOGIN_RATE_LIMIT.WINDOW_MINUTES * 60 * 1000,
+  limit: envVars.LOGIN_RATE_LIMIT.MAX_FAILURES,
   skipSuccessfulRequests: true,
   standardHeaders: "draft-7",
   legacyHeaders: false,
