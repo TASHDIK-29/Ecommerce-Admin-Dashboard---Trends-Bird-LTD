@@ -3,7 +3,6 @@ import { StatusCodes } from "http-status-codes";
 import { AppError } from "../error/AppError";
 import type { TMeta } from "./sendResponse";
 
-/** Raw `req.query` after validation — every value is a string or absent. */
 export type RawQuery = Record<string, unknown>;
 
 export type WhereFragment = Record<string, unknown>;
@@ -15,13 +14,9 @@ export type FilterSpec =
   | { type: "custom"; build: (raw: string) => WhereFragment | undefined };
 
 export interface ListQueryConfig {
-  /** Fields the `searchTerm` runs a case-insensitive contains over. Dotted paths allowed ("brand.name"). */
   searchableFields?: readonly string[];
-  /** Query params that may be turned into `where` clauses, and how to read each. */
   filters?: Record<string, FilterSpec>;
-  /** Fields the client may sort by. Anything else is rejected rather than silently ignored. */
   sortableFields?: readonly string[];
-  /** Applied when the client sends no `sort`. */
   defaultSort?: Record<string, "asc" | "desc">;
   maxLimit?: number;
 }
@@ -35,7 +30,6 @@ export interface ListQueryResult {
   limit: number;
 }
 
-/** Turns "brand.name" + value into { brand: { name: value } }. */
 const nest = (path: string, value: unknown): WhereFragment => {
   const segments = path.split(".");
   return segments.reduceRight<unknown>(
@@ -55,25 +49,12 @@ const parseBoolean = (raw: string): boolean | undefined => {
   return undefined;
 };
 
-/**
- * Builds the `where` / `orderBy` / `skip` / `take` for a paginated list
- * endpoint from `req.query`.
- *
- * Deliberately returns the `where` rather than running the query, so the
- * caller counts with *the same* `where` it selects with:
- *
- *   const [rows, total] = await prisma.$transaction([
- *     prisma.thing.findMany({ where, orderBy, skip, take }),
- *     prisma.thing.count({ where }),
- *   ]);
- *
- * That is the fix for the classic pagination bug where the total is the
- * unfiltered collection count and the UI over-reports the number of pages.
- */
-export const buildListQuery = (
-  query: RawQuery,
+export const buildListQuery = <T extends object>(
+  query: T,
   config: ListQueryConfig = {},
 ): ListQueryResult => {
+  const raw = query as RawQuery;
+
   const {
     searchableFields = [],
     filters = {},
@@ -84,8 +65,7 @@ export const buildListQuery = (
 
   const conditions: WhereFragment[] = [];
 
-  // --- search -------------------------------------------------------------
-  const searchTerm = asString(query.searchTerm);
+  const searchTerm = asString(raw.searchTerm);
   if (searchTerm && searchableFields.length > 0) {
     conditions.push({
       OR: searchableFields.map((field) =>
@@ -94,18 +74,17 @@ export const buildListQuery = (
     });
   }
 
-  // --- filters ------------------------------------------------------------
   for (const [param, spec] of Object.entries(filters)) {
-    const raw = asString(query[param]);
-    if (raw === undefined) continue;
+    const rawValue = asString(raw[param]);
+    if (rawValue === undefined) continue;
 
     switch (spec.type) {
       case "string":
-        conditions.push(nest(param, raw));
+        conditions.push(nest(param, rawValue));
         break;
 
       case "boolean": {
-        const parsed = parseBoolean(raw);
+        const parsed = parseBoolean(rawValue);
         if (parsed === undefined) {
           throw new AppError(
             StatusCodes.UNPROCESSABLE_ENTITY,
@@ -119,7 +98,7 @@ export const buildListQuery = (
 
       case "enum": {
         const match = spec.values.find(
-          (value) => value.toLowerCase() === raw.toLowerCase(),
+          (value) => value.toLowerCase() === rawValue.toLowerCase(),
         );
         if (!match) {
           throw new AppError(
@@ -133,15 +112,14 @@ export const buildListQuery = (
       }
 
       case "custom": {
-        const fragment = spec.build(raw);
+        const fragment = spec.build(rawValue);
         if (fragment) conditions.push(fragment);
         break;
       }
     }
   }
 
-  // --- sorting ------------------------------------------------------------
-  const sortParam = asString(query.sort);
+  const sortParam = asString(raw.sort);
   let orderBy: Record<string, unknown>[];
 
   if (sortParam) {
@@ -165,9 +143,8 @@ export const buildListQuery = (
     );
   }
 
-  // --- pagination ---------------------------------------------------------
-  const page = Math.max(1, Number(query.page) || 1);
-  const requestedLimit = Number(query.limit) || 10;
+  const page = Math.max(1, Number(raw.page) || 1);
+  const requestedLimit = Number(raw.limit) || 10;
   const limit = Math.min(Math.max(1, requestedLimit), maxLimit);
 
   return {

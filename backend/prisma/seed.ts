@@ -5,13 +5,6 @@ import "dotenv/config";
 
 const prisma = new PrismaClient();
 
-/**
- * Every permission the assignment lists in Section 4.3, grouped by module.
- *
- * This is the vocabulary of the whole system: routes declare these strings,
- * roles hold them, and the dashboard renders its sidebar from the `watch`
- * entries. Adding a module means adding a row here.
- */
 const PERMISSION_GROUPS: {
   name: string;
   slug: string;
@@ -74,10 +67,6 @@ const PERMISSION_GROUPS: {
   },
 ];
 
-/**
- * The modules the deliberately limited account may touch (Section 4.4):
- * catalog only — no permission, role or user access.
- */
 const CATALOG_GROUP_SLUGS = ["dashboard", "media", "category", "brand", "attribute", "product"];
 
 const SUPER_ADMIN_ROLE = "Super Admin";
@@ -116,7 +105,6 @@ const seedPermissions = async (): Promise<void> => {
   console.log(`  permissions: ${total} across ${PERMISSION_GROUPS.length} groups`);
 };
 
-/** Creates or updates a role and sets its permission set to exactly `permissionIds`. */
 const upsertRoleWithPermissions = async (
   name: string,
   description: string,
@@ -152,8 +140,6 @@ const upsertUser = async (
 
   await prisma.user.upsert({
     where: { email },
-    // Re-running the seed restores the documented password and clears any
-    // deactivation, so a reviewer can always get back in.
     update: { name, password: hashed, roleId, isActive: true, isDeleted: false },
     create: { name, email, password: hashed, roleId, isActive: true },
   });

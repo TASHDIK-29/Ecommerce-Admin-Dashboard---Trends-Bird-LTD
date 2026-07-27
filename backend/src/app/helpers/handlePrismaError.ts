@@ -3,7 +3,6 @@ import { StatusCodes } from "http-status-codes";
 
 import type { TGenericErrorResponse } from "../interfaces/error.types";
 
-/** Reads the offending field name(s) out of a Prisma error's `meta` bag. */
 const readTargets = (meta: unknown): string[] => {
   if (!meta || typeof meta !== "object") return [];
 
@@ -26,11 +25,6 @@ const humanise = (field: string): string =>
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .toLowerCase();
 
-/**
- * Maps Prisma's error codes onto the status codes Section 4.2 requires, so a
- * duplicate slug returns 409 and a missing record returns 404 — never a 500,
- * and never a raw database error string in the response body.
- */
 export const handlePrismaKnownError = (
   err: Prisma.PrismaClientKnownRequestError,
 ): TGenericErrorResponse => {
@@ -38,7 +32,6 @@ export const handlePrismaKnownError = (
   const field = targets[0] ?? "record";
 
   switch (err.code) {
-    // Unique constraint failed — duplicate slug, SKU, email, permission name.
     case "P2002": {
       const label = targets.length > 0 ? targets.map(humanise).join(", ") : "value";
       return {
@@ -51,7 +44,6 @@ export const handlePrismaKnownError = (
       };
     }
 
-    // An operation depended on a record that was not found.
     case "P2025": {
       const cause =
         typeof err.meta?.cause === "string" ? err.meta.cause : "Record not found.";
@@ -62,7 +54,6 @@ export const handlePrismaKnownError = (
       };
     }
 
-    // Foreign key constraint failed — e.g. deleting a brand products still use.
     case "P2003": {
       return {
         statusCode: StatusCodes.CONFLICT,
@@ -76,7 +67,6 @@ export const handlePrismaKnownError = (
       };
     }
 
-    // Required relation violation.
     case "P2014": {
       return {
         statusCode: StatusCodes.CONFLICT,
@@ -85,7 +75,6 @@ export const handlePrismaKnownError = (
       };
     }
 
-    // Value too long for the column.
     case "P2000": {
       return {
         statusCode: StatusCodes.UNPROCESSABLE_ENTITY,
@@ -94,7 +83,6 @@ export const handlePrismaKnownError = (
       };
     }
 
-    // Null constraint violation.
     case "P2011": {
       return {
         statusCode: StatusCodes.UNPROCESSABLE_ENTITY,
@@ -112,10 +100,6 @@ export const handlePrismaKnownError = (
   }
 };
 
-/**
- * A malformed Prisma query is a programming error, but it must still not leak
- * the generated query text (which contains schema internals) to the client.
- */
 export const handlePrismaValidationError = (): TGenericErrorResponse => ({
   statusCode: StatusCodes.UNPROCESSABLE_ENTITY,
   message: "The request contained invalid or unexpected fields.",

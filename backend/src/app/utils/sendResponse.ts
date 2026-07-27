@@ -15,10 +15,6 @@ export interface TResponse<T> {
   meta?: TMeta;
 }
 
-/**
- * The one success shape for the whole API. `meta` is present on list
- * endpoints and omitted everywhere else, so the frontend can rely on it.
- */
 export const sendResponse = <T>(res: Response, payload: TResponse<T>): void => {
   const body: Record<string, unknown> = {
     statusCode: payload.statusCode,

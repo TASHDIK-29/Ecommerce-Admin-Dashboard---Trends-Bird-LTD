@@ -2,13 +2,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-/**
- * The single source of truth for configuration.
- *
- * This is the ONLY file in the codebase allowed to touch `process.env`.
- * It validates on import, so a missing key crashes the process at boot
- * rather than surfacing as a confusing 500 on some request an hour later.
- */
 export interface EnvConfig {
   NODE_ENV: "development" | "production" | "test";
   PORT: string;
@@ -38,13 +31,6 @@ export interface EnvConfig {
   MAX_FILE_SIZE_MB: number;
 }
 
-/**
- * Keys that must be present for the server to boot at all.
- *
- * Cloudinary keys are deliberately NOT in this list: they are validated
- * lazily by the Media module (see config/cloudinary.ts) so that the rest of
- * the API can be developed and reviewed without a Cloudinary account.
- */
 const requiredEnvVariables: string[] = [
   "NODE_ENV",
   "PORT",

@@ -21,14 +21,8 @@ import type {
   ISessionUser,
 } from "./auth.interface";
 
-/**
- * A real bcrypt hash of a value nobody knows, compared against when the email
- * does not exist. Without it, a missing account returns noticeably faster than
- * a wrong password and the "same error for both" rule leaks through timing.
- */
 const DUMMY_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEe.n0KBd/RQ2m0S8xTz4uZ0hE8b8Q1Ff9G";
 
-/** The shape `sessionUserSelect` returns, before flattening. */
 interface SessionQueryResult {
   id: string;
   name: string;
@@ -70,7 +64,6 @@ const login = async (
     select: { ...sessionUserSelect, password: true, isDeleted: true },
   });
 
-
   if (!user || user.isDeleted) {
     await comparePassword(payload.password, DUMMY_HASH);
     throw new AppError(StatusCodes.UNAUTHORIZED, INVALID_CREDENTIALS_MESSAGE);
@@ -81,7 +74,6 @@ const login = async (
     throw new AppError(StatusCodes.UNAUTHORIZED, INVALID_CREDENTIALS_MESSAGE);
   }
 
-  
   if (!user.isActive) {
     throw new AppError(
       StatusCodes.FORBIDDEN,
@@ -93,7 +85,6 @@ const login = async (
 
   return { tokens, user: toSessionUser(user) };
 };
-
 
 const refreshSession = async (
   refreshToken: string,
@@ -149,7 +140,6 @@ const refreshSession = async (
     throw new AppError(StatusCodes.UNAUTHORIZED, "This account no longer exists.");
   }
 
-  
   if (!user.isActive) {
     await revokeAllUserTokens(stored.userId);
     throw new AppError(
@@ -160,7 +150,6 @@ const refreshSession = async (
 
   const tokens = await issueTokens({ id: user.id, email: user.email }, context);
 
-  
   await prisma.refreshToken.update({
     where: { id: stored.id },
     data: { revokedAt: new Date(), replacedById: tokens.refreshTokenId },
@@ -168,7 +157,6 @@ const refreshSession = async (
 
   return { tokens, user: toSessionUser(user) };
 };
-
 
 const logout = async (refreshToken?: string): Promise<void> => {
   if (!refreshToken) return;
@@ -200,7 +188,6 @@ const getSession = async (userId: string): Promise<ISessionUser> => {
 
   return toSessionUser(user);
 };
-
 
 const changePassword = async (
   userId: string,
@@ -234,7 +221,6 @@ const changePassword = async (
     }),
   ]);
 };
-
 
 const purgeExpiredTokens = async (): Promise<number> => {
   const cutoff = new Date(Date.now() - durationToMs(envVars.JWT.REFRESH_EXPIRES));

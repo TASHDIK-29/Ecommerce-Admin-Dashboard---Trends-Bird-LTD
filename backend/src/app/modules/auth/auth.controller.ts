@@ -18,7 +18,6 @@ const readContext = (req: Request): TokenContext => ({
   ipAddress: req.ip,
 });
 
-
 const readRefreshToken = (req: Request): string | undefined => {
   const fromCookie = req.cookies?.[REFRESH_TOKEN_COOKIE];
   if (typeof fromCookie === "string" && fromCookie.length > 0) return fromCookie;

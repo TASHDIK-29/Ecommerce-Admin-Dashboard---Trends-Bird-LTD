@@ -12,13 +12,6 @@ import {
 import { handleZodError } from "../helpers/handleZodError";
 import type { TErrorSource } from "../interfaces/error.types";
 
-/**
- * The one place an error becomes a response.
- *
- * Every failure in the API — thrown, rejected, or bubbled out of Prisma —
- * lands here and leaves in the same shape. No stack traces, raw database
- * errors or internal paths ever reach the client in production.
- */
 export const globalErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   let statusCode = StatusCodes.INTERNAL_SERVER_ERROR;
   let message = "Something went wrong.";
@@ -44,8 +37,6 @@ export const globalErrorHandler: ErrorRequestHandler = (err, _req, res, _next) =
     message = err.message;
     errorSources = err.errorSources ?? [{ path: "request", message: err.message }];
   } else if (err instanceof Error) {
-    // An unexpected error. Log it in development, but never show its text to
-    // the client — that is how internal paths and query strings leak.
     message = isDevelopment ? err.message : "Something went wrong.";
     errorSources = [{ path: "request", message }];
   }

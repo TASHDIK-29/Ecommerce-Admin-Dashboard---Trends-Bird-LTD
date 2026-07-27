@@ -2,11 +2,6 @@ import jwt, { type JwtPayload, type SignOptions } from "jsonwebtoken";
 
 import type { JwtPayloadData } from "../interfaces/auth.types";
 
-/**
- * Thin wrappers around jsonwebtoken so callers never repeat the algorithm or
- * the payload shape. Verification errors are intentionally NOT caught here —
- * the auth guard distinguishes expired from malformed and maps both to 401.
- */
 export const generateToken = (
   payload: JwtPayloadData,
   secret: string,

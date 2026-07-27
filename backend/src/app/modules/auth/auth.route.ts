@@ -7,7 +7,6 @@ import { AuthValidation } from "./auth.validation";
 
 const router = Router();
 
-
 const loginRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -21,7 +20,6 @@ const loginRateLimit = rateLimit({
     stack: null,
   },
 });
-
 
 router.post(
   "/login",
@@ -37,7 +35,6 @@ router.post(
 );
 
 router.post("/logout", AuthController.logout);
-
 
 router.get("/session", AuthController.getSession);
 
