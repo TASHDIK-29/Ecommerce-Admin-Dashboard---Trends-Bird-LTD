@@ -10,6 +10,34 @@ There is no storefront, cart, order or customer side — admin dashboard only, a
 
 ---
 
+## 0. Live links
+
+| What | URL |
+|---|---|
+| **Dashboard** | **https://trends-bird-admin.vercel.app** |
+| API | https://trends-bird-api.vercel.app |
+| API health check | https://trends-bird-api.vercel.app/health |
+
+| Account | Email | Password | Sees |
+|---|---|---|---|
+| Super administrator | `superadmin@trendsbird.test` | `SuperAdmin@123` | Everything — all 41 permissions |
+| Limited catalog user | `catalog@trendsbird.test` | `Catalog@123` | Catalog only — 403 on permission/role/user |
+
+Sign in as the catalog user to see §4.4 in action: the Permission, Role and User entries
+disappear from the sidebar, and calling those routes directly with its token returns 403.
+
+The browser talks to the API through `/api/v1` **on the dashboard's own origin**, which
+Next.js rewrites to the API host. Both apps sit under `.vercel.app`, which is on the
+Public Suffix List, so a cookie set directly by the API host would be a third-party
+cookie — blocked outright by Safari and by Chrome in incognito, which would leave login
+returning 200 with a session that never persists. Going through the dashboard's origin
+makes those cookies first-party. The API stays directly reachable, so **Postman should be
+pointed at `https://trends-bird-api.vercel.app/api/v1`**, not at the dashboard.
+
+See §12 for how the two are deployed.
+
+---
+
 ## 1. Status at a glance
 
 | # | Module | Status | Notes |
@@ -23,7 +51,7 @@ There is no storefront, cart, order or customer side — admin dashboard only, a
 | 7 | Brand | **Complete** | CRUD, status filter, logo from library |
 | 8 | Attribute | **Complete** | 5 types, typed reference values, per-attribute uniqueness |
 | 9 | Product | **Complete** | Simple + variable, variants, media attachments, atomic create |
-| — | **Frontend** | **Not attempted yet** | See §9 |
+| — | **Frontend** | **Complete** | Every §6.1 screen; see §9 |
 
 **67 routes** under `/api/v1`, **62** of them behind an explicit permission check.
 The 5 that are not: three public auth routes (`login`, `refresh`, `logout`) and two that
@@ -44,6 +72,11 @@ only need a valid session (`GET /auth/session`, `POST /auth/change-password`).
 | Passwords | bcrypt, cost 12 |
 | Validation | Zod 4 — body, route params **and** query string |
 | File storage | Cloudinary (upload via memory buffer, `sharp` for validation + thumbnails) |
+| Frontend | Next.js 16 (App Router) + React 19, TypeScript |
+| UI | shadcn/ui on Radix primitives, Tailwind CSS 4, `lucide-react`, `sonner` toasts |
+| Data fetching | TanStack Query 5 — server-side pagination, search and filters throughout |
+| Forms | React Hook Form + Zod resolvers, API field errors mapped back onto inputs |
+| Hosting | Vercel — API as a serverless function, dashboard as a Next.js project |
 
 ---
 
@@ -54,7 +87,7 @@ only need a valid session (`GET /auth/session`, `POST /auth/change-password`).
 - A PostgreSQL 17 database (local, or a free [Neon](https://neon.com) project)
 - A free [Cloudinary](https://cloudinary.com) account (only needed for the Media module)
 
-### Steps
+### Steps — backend
 
 ```bash
 git clone <repository-url>
@@ -71,7 +104,24 @@ npm run dev               # http://localhost:5000
 
 `GET http://localhost:5000/health` should return `200`.
 
-### Commands
+### Steps — frontend
+
+In a second terminal, with the API already running:
+
+```bash
+cd "Trends Bird LTD/frontend"
+
+npm install
+cp .env.example .env.local   # the default already points at localhost:5000
+
+npm run dev                  # http://localhost:3000
+```
+
+Sign in with either account from §4. Locally the browser calls the API directly on
+port 5000 and `BACKEND_ORIGIN` stays unset, so the proxy rewrite described in §0 is
+skipped entirely — it exists only for the deployed pair.
+
+### Backend commands
 
 | Command | What it does |
 |---|---|
@@ -84,7 +134,16 @@ npm run dev               # http://localhost:5000
 | `npm run seed` | Idempotent seed — safe to re-run |
 | `npm run db:reset` | Drop, re-migrate and re-seed |
 
-### Environment variables
+### Frontend commands
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start the dashboard on `http://localhost:3000` |
+| `npm run build` | Production build |
+| `npm start` | Serve the production build |
+| `npm run lint` | ESLint over the app |
+
+### Backend environment variables
 
 Every key below is read by [`backend/src/app/config/env.ts`](backend/src/app/config/env.ts),
 which validates on import and **crashes at boot** on a missing value rather than failing
@@ -112,6 +171,13 @@ Generate secrets with:
 ```bash
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
+
+### Frontend environment variables
+
+| Variable | Required | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | yes | `http://localhost:5000/api/v1` locally; `/api/v1` in production, so calls stay on this origin and the cookies stay first-party |
+| `BACKEND_ORIGIN` | production only | Origin of the deployed API, no trailing slash and no `/api/v1`. Read at build time by `next.config.ts` to set up the proxy rewrite. Leave unset locally |
 
 ---
 
@@ -144,9 +210,13 @@ documented fallback.
 | `refreshToken` | yes | 7 days | `/api/v1/auth` |
 | `csrfToken` | **no** — JS must read it | 7 days | `/` |
 
-- `sameSite` tracks `secure`: `none` + `secure` in production (cross-domain dashboard),
-  `lax` in development, because browsers silently drop a non-secure `SameSite=None`
-  cookie over plain http.
+- `sameSite` tracks `secure`: `none` + `secure` in production, `lax` in development,
+  because browsers silently drop a non-secure `SameSite=None` cookie over plain http.
+  `None` keeps the cookies usable when the API is called cross-origin — which is what a
+  reviewer's Postman does, and what a dashboard hosted on a separate domain would do.
+  The deployed dashboard does not rely on it: it proxies through its own origin so the
+  cookies arrive first-party (§0), which is the only arrangement Safari and incognito
+  Chrome will honour.
 - **CSRF**: double-submit. Cookie-authenticated mutating requests must echo the
   `csrfToken` value in the `X-CSRF-Token` header. A third-party site can make the browser
   *send* the cookie but cannot *read* it to build the header. `POST /auth/login` is exempt
@@ -291,11 +361,20 @@ which proves the 403s are permission-based and not a broken token.
 The last folder, **Session teardown**, changes the super admin's password and logs out. It
 is deliberately last; re-run `npm run seed` afterwards to restore the documented password.
 
-Verified with Newman: **95 requests, 36 assertions, 0 failures.**
+Verified with Newman: **95 requests, 36 assertions, 0 failures** — against localhost and
+again against the deployed API.
 
 ```bash
+# localhost
 npx newman run docs/postman_collection.json
+
+# the live API
+npx newman run docs/postman_collection.json \
+  --env-var baseUrl=https://trends-bird-api.vercel.app/api/v1
 ```
+
+The **Media → Upload files** request ships with no file attached, so Newman skips the
+actual upload; pick a file in Postman to exercise it.
 
 ### Route reference
 
@@ -470,16 +549,44 @@ price *or* a `priceRange` computed from effective (sale) prices.
 
 ---
 
-## 9. What is not done
+## 9. Frontend
 
-- **The frontend has not been started.** The assignment requires a dashboard UI; only the
-  API exists so far. This is the single largest gap in the submission and it is stated
-  plainly rather than implied.
+Every screen §6.1 asks for exists, and each one drives the API rather than filtering in
+the browser.
+
+| Screen | Route | Notes |
+|---|---|---|
+| Login | `/login` | Clear error on bad credentials, lands in the dashboard |
+| Dashboard shell | `/` | Sidebar, signed-in user and role, logout. Entries are driven by the `:watch` permissions from `GET /auth/session` |
+| Permission | `/permissions` | Module-by-action grid; create a group by naming it and ticking actions |
+| Role | `/roles`, `/roles/new`, `/roles/[id]/edit` | Full grid with select-all per module and per action |
+| User | `/users` | Create/edit, pick a role, toggle active, role and status in the list |
+| Media library | `/media` | Multi-file upload with per-file progress, edit alt text and title, delete |
+| Category | `/categories` | Nested tree, parent picker, image, status and sort order |
+| Brand | `/brands` | Logo picked from the media library |
+| Attribute | `/attributes` | All five types, value management including colour swatches |
+| Product list | `/products` | Thumbnail, brand, categories, price/price range, stock, status; search, filters and sorting all server-side |
+| Product form | `/products/new`, `/products/[id]/edit` | Sectioned: details, brand and categories, media with library picker + thumbnail + gallery reorder, and the variant matrix |
+
+Behaviour from §6.2 is implemented: the session is restored from `GET /auth/session` on
+load, a 401 triggers **one** refresh and a transparent retry, and parallel 401s share a
+single in-flight promise so they cannot each rotate the refresh token and trip reuse
+detection ([`lib/api-client.ts`](frontend/lib/api-client.ts)). Logout calls the backend so
+the token is really revoked. Actions the user lacks permission for are hidden, and a 403
+renders a message rather than a blank screen.
+
+Permission-aware rendering is convenience only — every check is enforced again on the
+API, which is what §4.4 actually grades.
+
+## 9.1 What is not done
+
 - **No automated test suite is committed.** Every module was verified with scripted
   end-to-end runs against the live database (532 assertions in total, including access
-  control, the 401/403 matrix, transaction atomicity and raw-SQL constraint probes), but
-  those scripts were working tools, not a committed `npm test`. §13 lists tests as
-  optional; this is still a gap worth naming.
+  control, the 401/403 matrix, transaction atomicity and raw-SQL constraint probes), plus
+  the Postman collection in §8 run with Newman against both localhost and the deployed
+  API. Those were working tools, not a committed `npm test`. §13 lists tests as optional;
+  this is still a gap worth naming.
+- **`longDescription` is not sanitized on the way in or out.** See §10.
 
 ## 10. Known issues and limitations
 
@@ -492,7 +599,18 @@ price *or* a `priceRange` computed from effective (sale) prices.
   409 explaining why. There is no restore endpoint, so freeing the address means editing
   the database directly.
 - **The login rate limiter is in-process memory.** It resets on restart and is not shared
-  across instances. Behind more than one replica it would need Redis.
+  across instances. Behind more than one replica it would need Redis. On the deployed
+  serverless API this is weaker still: each function instance keeps its own counter and
+  loses it on cold start, so the limit is best-effort in production.
+- **Uploads on the deployed API are capped at 4 MB, not the documented 10.** Vercel
+  refuses serverless request bodies above ~4.5 MB at the platform edge, before Express
+  sees them, which would surface as an opaque error instead of the clean 413 the code
+  produces. `MAX_FILE_SIZE_MB` is therefore set to `4` in the Vercel environment so the
+  refusal stays inside the project's own error shape. A local or container deployment has
+  no such limit.
+- **The first request after a quiet period is slow.** The API is a serverless function, so
+  a cold start pays for the Node boot and a fresh Prisma connection — typically a few
+  seconds. Subsequent requests are normal.
 - **The category tree is built in memory.** One query fetches all rows and the tree is
   assembled in JavaScript. That is fine for an admin catalog; tens of thousands of
   categories would want a recursive CTE.
@@ -510,6 +628,8 @@ price *or* a `priceRange` computed from effective (sale) prices.
 ```
 .
 ├── backend/
+│   ├── api/
+│   │   └── index.ts             # Vercel serverless entry — exports the Express app
 │   ├── prisma/
 │   │   ├── migrations/          # committed, runnable in order
 │   │   ├── schema.prisma
@@ -526,12 +646,72 @@ price *or* a `priceRange` computed from effective (sale) prices.
 │   │       ├── modules/<name>/  # constant · interface · validation · service · controller · route
 │   │       ├── routes/          # single moduleRoutes array
 │   │       └── utils/           # catchAsync, sendResponse, buildListQuery, tokens, slug
+│   ├── vercel.json              # rewrites every path to the function
 │   └── .env.example
 ├── docs/
 │   └── postman_collection.json
-└── frontend/                    # not started
+└── frontend/
+    ├── app/
+    │   ├── login/               # public route
+    │   └── (dashboard)/         # everything behind the shell: permissions, roles,
+    │                            #   users, media, categories, brands, attributes, products
+    ├── components/
+    │   ├── layout/              # sidebar, top bar, permission-aware nav
+    │   ├── shared/              # data table, pagination, media picker, confirm dialogs
+    │   ├── ui/                  # shadcn/ui primitives
+    │   └── <module>/            # one folder per screen's own components
+    ├── lib/
+    │   ├── api-client.ts        # fetch wrapper, CSRF header, single-flight refresh
+    │   ├── auth-context.tsx     # session restore, logout
+    │   ├── permissions.ts       # has() helpers used to hide actions
+    │   └── types.ts             # response envelope + domain types
+    ├── next.config.ts           # the /api/v1 proxy rewrite (see §0)
+    └── .env.example
 ```
 
-Each module keeps routing, business logic and data access separate: routes declare the
-path, guards and validation; controllers only read the request and hand off; services hold
-every rule and every query and never see `req`/`res`.
+Each backend module keeps routing, business logic and data access separate: routes declare
+the path, guards and validation; controllers only read the request and hand off; services
+hold every rule and every query and never see `req`/`res`.
+
+---
+
+## 12. Deployment
+
+Both apps are on Vercel, in one repository, as two projects.
+
+| Project | Root directory | Deployed by |
+|---|---|---|
+| `trends-bird-api` | `backend` | Vercel CLI — `vercel deploy --prod` |
+| `trends-bird-admin` | `frontend` | Vercel's GitHub integration, on push to `main` |
+
+### What the API needs to run serverless
+
+`src/server.ts` binds a port and installs signal handlers, none of which applies to a
+function. [`backend/api/index.ts`](backend/api/index.ts) exports the Express app as the
+handler instead, and [`backend/vercel.json`](backend/vercel.json) rewrites every path to
+it — the rewrite preserves the original URL, so the app still routes `/api/v1/...` and
+`/health` exactly as it does locally. `npm run dev` and `npm start` are untouched.
+
+Two Prisma details matter: `binaryTargets` includes `rhel-openssl-3.0.x` for the Lambda
+runtime, and a `postinstall` hook runs `prisma generate` on Vercel's build machines. The
+`DATABASE_URL` uses Neon's **pooled** endpoint, which is what a function-per-request model
+needs.
+
+Migrations are **not** run by the deploy. Apply them from a machine with the production
+`DATABASE_URL`:
+
+```bash
+cd backend
+npx prisma migrate deploy
+npm run seed
+```
+
+### Environment variables set on Vercel
+
+The API project holds every variable from §3 with `NODE_ENV=production`,
+`FRONTEND_URL=https://trends-bird-admin.vercel.app` and `MAX_FILE_SIZE_MB=4` (see §10).
+The dashboard project holds `NEXT_PUBLIC_API_URL=/api/v1` and
+`BACKEND_ORIGIN=https://trends-bird-api.vercel.app`.
+
+Setting `NEXT_PUBLIC_API_URL` to the absolute API URL instead would bypass the proxy and
+break the session in Safari and in incognito windows, for the reason given in §0.
