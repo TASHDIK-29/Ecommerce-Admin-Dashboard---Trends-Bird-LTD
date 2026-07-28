@@ -1,0 +1,8 @@
+# Written by `vercel link`. Kept, but narrowed: the `.env*` it generates also
+# shadows .env.example, which this project deliberately tracks.
+.vercel
+
+.env
+.env.local
+.env.*.local
+!.env.example
