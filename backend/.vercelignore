@@ -1,0 +1,13 @@
+# Local secrets — production values live in the Vercel project's environment.
+.env
+.env.*
+!.env.example
+
+# Built locally by `npm run build`; Vercel builds its own function bundle.
+dist/
+
+# Not part of the deployed function.
+docs/
+*.log
+*.tsbuildinfo
+.eslintcache

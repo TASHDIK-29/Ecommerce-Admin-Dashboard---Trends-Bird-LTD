@@ -1,13 +1,14 @@
 {
   "name": "trends-bird-admin-backend",
   "version": "1.0.0",
-  "description": "Ecommerce Admin Dashboard API - Trends Bird Limited backend intern assignment",
+  "description": "E-commerce Admin Dashboard API - Trends Bird Limited backend intern assignment",
   "main": "dist/server.js",
   "type": "commonjs",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "tsx watch ./src/server.ts",
     "build": "tsc",
     "start": "node ./dist/server.js",
