@@ -76,6 +76,11 @@
       "type": "string"
     },
     {
+      "key": "productSlug",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "variantId",
       "value": "",
       "type": "string"
@@ -2535,7 +2540,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 201) { pm.collectionVariables.set('productId', pm.response.json().data.id); }"
+                  "if (pm.response.code === 201) { const b = pm.response.json();",
+                  "  pm.collectionVariables.set('productId', b.data.id);",
+                  "  pm.collectionVariables.set('productSlug', b.data.slug); }"
                 ]
               }
             }
@@ -2584,6 +2591,7 @@
                 "exec": [
                   "if (pm.response.code === 201) { const b = pm.response.json();",
                   "  pm.collectionVariables.set('productId', b.data.id);",
+                  "  pm.collectionVariables.set('productSlug', b.data.slug);",
                   "  if (b.data.variants.length) pm.collectionVariables.set('variantId', b.data.variants[0].id);",
                   "  if (b.data.media.length) pm.collectionVariables.set('attachmentId', b.data.media[0].id); }"
                 ]
@@ -2705,6 +2713,31 @@
               ]
             },
             "description": "Categories, brand, media, variants and each variant's attribute values."
+          },
+          "response": []
+        },
+        {
+          "name": "Get one product by SLUG (what the edit screen calls)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/slug/{{productSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "slug",
+                "{{productSlug}}"
+              ]
+            },
+            "description": "Same detail payload as GET /products/:id. The dashboard edit screen uses this so the product id never appears in the browser URL. Declared before /:id so a slug is never parsed as an id. A slug that does not exist returns 404; a malformed slug returns 422."
           },
           "response": []
         },

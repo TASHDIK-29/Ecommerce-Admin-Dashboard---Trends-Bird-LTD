@@ -483,6 +483,18 @@ const getProductById = async (id: string) => {
   return serializeProduct(product);
 };
 
+/**
+ * The dashboard addresses a product by its slug so the surrogate id never has to
+ * appear in a browser URL. The slug is unique, so this resolves to one record.
+ */
+const getProductBySlug = async (slug: string) => {
+  const product = await prisma.product.findUnique({ where: { slug }, select: productDetailSelect });
+
+  if (!product) throw notFound("Product");
+
+  return serializeProduct(product);
+};
+
 const updateProduct = async (id: string, payload: IUpdateProductPayload) => {
   const product = await prisma.product.findUnique({
     where: { id },
@@ -1007,6 +1019,7 @@ export const ProductService = {
   createProduct,
   getProducts,
   getProductById,
+  getProductBySlug,
   updateProduct,
   deleteProduct,
   addVariant,

@@ -20,6 +20,15 @@ router
     ProductController.createProduct,
   );
 
+// Declared before "/:id" so a slug is never mistaken for an id. The dashboard reads
+// a product through this route, which keeps the surrogate id out of the browser URL.
+router.get(
+  "/slug/:slug",
+  requirePermission("product:read"),
+  validateRequest({ params: ProductValidation.slugParamSchema }),
+  ProductController.getProductBySlug,
+);
+
 router.post(
   "/:id/variants/generate",
   requirePermission("product:update"),

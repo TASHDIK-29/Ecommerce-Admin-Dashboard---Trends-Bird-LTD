@@ -245,7 +245,7 @@ export const ProductForm = ({ product }: { product?: ProductDetail }) => {
       toast.success(
         `"${created.name}" created${created.variants.length > 0 ? ` with ${created.variants.length} variant(s)` : ""}.`,
       );
-      router.push(`/products/${created.id}/edit`);
+      router.push("/products");
     } catch (error) {
       setFormErrors(applyApiErrors(error, setError, FIELDS));
     }

@@ -395,7 +395,7 @@ export default function ProductsPage() {
                           <PermissionGate permission="product:update">
                             <Button variant="ghost" size="icon" asChild>
                               <Link
-                                href={`/products/${product.id}/edit`}
+                                href={`/products/${product.slug}/edit`}
                                 aria-label={`Edit ${product.name}`}
                               >
                                 <Pencil className="size-4" aria-hidden />

@@ -9,14 +9,18 @@ import { DataState } from "@/components/shared/data-state";
 import { Forbidden } from "@/components/shared/forbidden";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
-import { useProduct } from "@/hooks/use-products";
+import { useProductBySlug } from "@/hooks/use-products";
 import { useAuth } from "@/lib/auth-context";
 
-/** Next 16 hands `params` over as a Promise, read here with React's `use()`. */
-export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+/**
+ * Next 16 hands `params` over as a Promise, read here with React's `use()`.
+ * The route carries the slug rather than the id, so the surrogate key stays out
+ * of the address bar; the id arrives inside the payload for the mutations.
+ */
+export default function EditProductPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const { can } = useAuth();
-  const query = useProduct(id);
+  const query = useProductBySlug(slug);
 
   if (!can("product:update")) {
     return <Forbidden permission="product:update" />;

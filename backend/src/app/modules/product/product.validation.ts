@@ -61,6 +61,10 @@ const idParamSchema = z.object({
   id: z.uuid("A valid product id is required."),
 });
 
+const slugParamSchema = z.object({
+  slug: slugSchema,
+});
+
 const variantParamSchema = z.object({
   id: z.uuid("A valid product id is required."),
   variantId: z.uuid("A valid variant id is required."),
@@ -193,6 +197,7 @@ const reorderMediaSchema = z.object({
 
 export const ProductValidation = {
   idParamSchema,
+  slugParamSchema,
   variantParamSchema,
   attachmentParamSchema,
   listQuerySchema,

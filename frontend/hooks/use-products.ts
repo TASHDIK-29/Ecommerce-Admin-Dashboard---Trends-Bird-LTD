@@ -161,6 +161,17 @@ export const useProduct = (id: string | undefined) =>
     enabled: Boolean(id),
   });
 
+/**
+ * The edit screen addresses a product by slug so its id never reaches the address
+ * bar. The id still comes back in the payload, which the mutations below need.
+ */
+export const useProductBySlug = (slug: string | undefined) =>
+  useQuery({
+    queryKey: [...PRODUCTS_KEY, "detail", "slug", slug],
+    queryFn: () => api.get<ProductDetail>(`/products/slug/${encodeURIComponent(slug ?? "")}`),
+    enabled: Boolean(slug),
+  });
+
 const invalidateProducts = (queryClient: ReturnType<typeof useQueryClient>) => {
   void queryClient.invalidateQueries({ queryKey: PRODUCTS_KEY });
 };

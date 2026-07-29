@@ -522,12 +522,13 @@ other three types. Changing an attribute's type re-validates its existing values
 </details>
 
 <details>
-<summary><b>Product</b> — 13 routes</summary>
+<summary><b>Product</b> — 14 routes</summary>
 
 | Method | Path | Permission |
 |---|---|---|
 | GET | `/products` | `product:read` |
 | POST | `/products` | `product:create` |
+| GET | `/products/slug/:slug` | `product:read` |
 | GET | `/products/:id` | `product:read` |
 | PATCH | `/products/:id` | `product:update` |
 | DELETE | `/products/:id` | `product:delete` |
@@ -545,6 +546,12 @@ each variant. The `hasVariants` flag drives validation in both directions. Creat
 product with its categories, media and variants is **one transaction** — a failed variant
 leaves no half-built product. List rows carry thumbnail, brand, categories, and a flat
 price *or* a `priceRange` computed from effective (sale) prices.
+
+`GET /products/slug/:slug` returns the same detail payload as `GET /products/:id`. It is
+declared before `/:id` so a slug is never parsed as one, and it exists so the dashboard can
+address a product by its slug and keep the surrogate id out of the browser URL. The id is
+still what the write routes take, and it still travels in the response body — this is URL
+hygiene, not an authorisation boundary. Both routes are guarded by `product:read`.
 </details>
 
 ---
@@ -566,7 +573,7 @@ the browser.
 | Brand | `/brands` | Logo picked from the media library |
 | Attribute | `/attributes` | All five types, value management including colour swatches |
 | Product list | `/products` | Thumbnail, brand, categories, price/price range, stock, status; search, filters and sorting all server-side |
-| Product form | `/products/new`, `/products/[id]/edit` | Sectioned: details, brand and categories, media with library picker + thumbnail + gallery reorder, and the variant matrix |
+| Product form | `/products/new`, `/products/[slug]/edit` | Sectioned: details, brand and categories, media with library picker + thumbnail + gallery reorder, and the variant matrix. Addressed by slug, so the product id never appears in the URL. Creating or saving returns to `/products` |
 
 Behaviour from §6.2 is implemented: the session is restored from `GET /auth/session` on
 load, a 401 triggers **one** refresh and a transparent retry, and parallel 401s share a
